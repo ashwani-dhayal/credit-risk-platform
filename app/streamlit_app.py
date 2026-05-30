@@ -1187,93 +1187,38 @@ def render_chatbot():
     st.title("💬 Talk-to-Data: AI-Powered Q&A")
     st.markdown("---")
 
-    with st.container(border=True):
-        st.markdown(f"""
-        **Ask any question about the loan data in plain English.**
-        The AI agent translates your question into SQL, runs it safely against the database,
-        and explains the results. You can also ask general finance/credit questions.
-
-        Currently using: **{SETTINGS.active_llm_provider.title()}**
-        {"" if SETTINGS.active_llm_provider != "fallback" else " (limited to 9 preset queries — add an API key for unlimited questions)"}
-        """)
-
     from src.llm.nl_to_sql import answer
 
     # Initialize chat history
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
 
-    # Suggestions
-    st.markdown("#### 💡 Try These:")
-    suggestions = [
-        ("📊", "How many applicants are there?"),
-        ("📈", "Overall default rate"),
-        ("🎓", "Default rate by education"),
-        ("💼", "Top occupations by default"),
-        ("💰", "Income: defaulters vs non-defaulters"),
-        ("🏠", "Default rate by housing type"),
-        ("💳", "What is credit risk?"),
-        ("🏦", "What is a home loan?"),
-    ]
-    cols = st.columns(4)
-    for i, (icon, s) in enumerate(suggestions):
-        if cols[i % 4].button(f"{icon} {s}", key=f"sg_{i}", use_container_width=True):
-            st.session_state["chat_input"] = s
-
-    st.markdown("---")
-
-    question = st.text_input(
-        "🔎 Your question:",
-        value=st.session_state.get("chat_input", ""),
-        placeholder="e.g. What is the average loan amount by housing type?",
-    )
-
-    col_ask, col_clear = st.columns([4, 1])
-    with col_ask:
-        go = st.button("Ask →", type="primary", use_container_width=True)
+    # Provider status bar
+    provider = SETTINGS.active_llm_provider
+    col_info, col_clear = st.columns([5, 1])
+    with col_info:
+        if provider != "fallback":
+            st.caption(f"🤖 AI Provider: **{provider.title()}** — Ask data queries or general questions")
+        else:
+            st.caption("⚠️ Fallback mode — limited to preset queries. Add an API key for full capabilities.")
     with col_clear:
-        if st.button("🗑️ Clear History", use_container_width=True):
+        if st.button("🗑️ Clear", use_container_width=True, help="Clear conversation history"):
             st.session_state["chat_history"] = []
             st.rerun()
 
-    if go and question.strip():
-        with st.spinner("🤖 Thinking…"):
-            res = answer(question.strip())
-
-        st.session_state["chat_history"].append({
-            "question": question.strip(),
-            "answer": res.answer,
-            "sql": res.sql,
-            "provider": res.provider,
-            "rows": res.rows,
-            "error": res.error,
-            "used_fallback": res.used_fallback,
-        })
-        st.session_state["chat_input"] = ""
-        st.rerun()
-
-    # Render chat history (most recent first)
-    if st.session_state["chat_history"]:
-        st.markdown("---")
-        st.markdown("### 💬 Conversation")
-
-        for i, entry in enumerate(reversed(st.session_state["chat_history"])):
-            idx = len(st.session_state["chat_history"]) - 1 - i
-
-            # User message
-            st.markdown(f"**🧑 You:** {entry['question']}")
-
-            # Assistant response
+    # Render existing conversation using chat messages
+    for entry in st.session_state["chat_history"]:
+        with st.chat_message("user"):
+            st.markdown(entry["question"])
+        with st.chat_message("assistant"):
             if entry.get("error"):
-                st.error(f"❌ {entry['answer']}")
+                st.error(entry["answer"])
             else:
-                with st.container(border=True):
-                    st.markdown(entry["answer"])
-
-            # Expandable details
-            with st.expander(f"🔧 Details (Provider: {entry['provider']})", expanded=False):
-                st.code(entry["sql"], language="sql")
-                if entry["rows"]:
+                st.markdown(entry["answer"])
+            # Compact details row
+            if entry["rows"]:
+                with st.expander(f"📋 Data ({len(entry['rows'])} rows) • SQL • Provider: {entry['provider']}"):
+                    st.code(entry["sql"], language="sql")
                     result_df = pd.DataFrame(entry["rows"])
                     st.dataframe(result_df, use_container_width=True, hide_index=True)
                     if len(result_df.columns) >= 2 and len(result_df) > 1:
@@ -1294,9 +1239,85 @@ def render_chatbot():
                                     st.plotly_chart(fig, use_container_width=True)
                         except Exception:
                             pass
+            elif entry["sql"] and not entry["sql"].startswith("--"):
+                with st.expander(f"🔧 SQL • Provider: {entry['provider']}"):
+                    st.code(entry["sql"], language="sql")
 
-            if i < len(st.session_state["chat_history"]) - 1:
-                st.markdown("---")
+    # Quick suggestions (only show when no history yet)
+    if not st.session_state["chat_history"]:
+        st.markdown("#### 💡 Try asking:")
+        suggestions = [
+            "How many applicants are there?",
+            "Overall default rate",
+            "Default rate by education level",
+            "Top occupations by default rate",
+            "What is credit risk?",
+            "What is a home loan?",
+            "Average income for defaulters vs non-defaulters",
+            "Default rate by gender",
+        ]
+        cols = st.columns(4)
+        for i, s in enumerate(suggestions):
+            if cols[i % 4].button(s, key=f"sg_{i}", use_container_width=True):
+                st.session_state["_pending_question"] = s
+                st.rerun()
+
+    # Chat input — supports Enter key natively, auto-clears after submit
+    pending = st.session_state.pop("_pending_question", None)
+    question = st.chat_input("Ask about loan data, credit risk, or any finance topic…")
+
+    # Handle either typed question or suggestion button click
+    active_question = pending or question
+    if active_question:
+        # Show user message immediately
+        with st.chat_message("user"):
+            st.markdown(active_question)
+
+        # Get answer
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking…"):
+                res = answer(active_question.strip())
+            if res.error:
+                st.error(res.answer)
+            else:
+                st.markdown(res.answer)
+            if res.rows:
+                with st.expander(f"📋 Data ({len(res.rows)} rows) • SQL • Provider: {res.provider}"):
+                    st.code(res.sql, language="sql")
+                    result_df = pd.DataFrame(res.rows)
+                    st.dataframe(result_df, use_container_width=True, hide_index=True)
+                    if len(result_df.columns) >= 2 and len(result_df) > 1:
+                        try:
+                            numeric_cols = result_df.select_dtypes(include=["number"]).columns.tolist()
+                            str_cols = result_df.select_dtypes(include=["object"]).columns.tolist()
+                            if numeric_cols and str_cols:
+                                chart_df = result_df[[str_cols[0], numeric_cols[0]]].dropna()
+                                if len(chart_df) > 0:
+                                    fig = px.bar(
+                                        chart_df,
+                                        x=str_cols[0], y=numeric_cols[0],
+                                        title=f"{numeric_cols[0].replace('_', ' ').title()} by {str_cols[0].replace('_', ' ').title()}",
+                                        color=str_cols[0],
+                                        color_discrete_sequence=px.colors.qualitative.Set2,
+                                    )
+                                    fig.update_layout(showlegend=False, xaxis_tickangle=-30)
+                                    st.plotly_chart(fig, use_container_width=True)
+                        except Exception:
+                            pass
+            elif res.sql and not res.sql.startswith("--"):
+                with st.expander(f"🔧 SQL • Provider: {res.provider}"):
+                    st.code(res.sql, language="sql")
+
+        # Save to history
+        st.session_state["chat_history"].append({
+            "question": active_question.strip(),
+            "answer": res.answer,
+            "sql": res.sql,
+            "provider": res.provider,
+            "rows": res.rows,
+            "error": res.error,
+            "used_fallback": res.used_fallback,
+        })
 
 
 # ============================ Improve Score ============================
