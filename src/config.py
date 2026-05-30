@@ -48,7 +48,7 @@ class Settings:
     groq_model: str = _env("GROQ_MODEL", "llama-3.1-8b-instant")
     gemini_api_key: str = _env("GEMINI_API_KEY")
     gemini_model: str = _env("GEMINI_MODEL", "gemini-1.5-flash")
-    llm_max_tokens: int = _env_int("LLM_MAX_TOKENS", 512)
+    llm_max_tokens: int = _env_int("LLM_MAX_TOKENS", 1024)
     llm_temperature: float = _env_float("LLM_TEMPERATURE", 0.0)
     llm_timeout_seconds: int = _env_int("LLM_TIMEOUT_SECONDS", 20)
 
