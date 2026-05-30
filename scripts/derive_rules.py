@@ -1,17 +1,15 @@
-"""CLI entry point: derive credit-policy rules from a small decision tree."""
-from __future__ import annotations
-
+"""CLI: extract IF-THEN rules from a small decision tree."""
 import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import SETTINGS  # noqa: E402
-from src.rules.derive import derive_rules, save_rules  # noqa: E402
+from src.config import SETTINGS
+from src.rules.derive import derive_rules, save_rules
 
 
-def main() -> int:
+def main():
     rules = derive_rules()
     out = save_rules(rules, SETTINGS.models_dir / "rules.json")
     print(f">> Saved {len(rules)} rules -> {out}\n")

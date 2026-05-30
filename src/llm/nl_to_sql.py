@@ -1,20 +1,11 @@
-"""Talk-to-data agent: turn natural-language questions into SQL + answer.
+"""Natural-language question -> safe SQL -> rows -> plain-English answer.
 
-Pipeline:
-  1. Build prompt with pinned schema + few-shot examples.
-  2. Call configured LLM (OpenAI / Groq / Gemini).
-  3. Parse JSON, extract `sql`.
-  4. Validate + harden SQL (src.utils.sql_safety).
-  5. Execute against read-only SQLite connection.
-  6. Ask LLM to summarise the result rows in plain English.
-
-Fallback (no API key set):
-  A small regex-based intent parser handles 6 canned questions so the demo
-  still works offline. Each intent maps to a curated SQL template — same
-  guardrails apply.
+The pipeline: prompt the LLM, extract JSON, validate the SQL with
+sql_safety, run it read-only against SQLite, then ask the LLM to
+summarise the rows. If no LLM key is configured (or if anything along
+the way breaks) we fall back to a regex-based intent parser that
+covers nine canonical questions.
 """
-
-from __future__ import annotations
 
 import json
 import re
@@ -34,15 +25,15 @@ from src.utils.sql_safety import validate_and_harden
 class AgentAnswer:
     question: str
     sql: str
-    rows: list[dict]
+    rows: list
     answer: str
-    provider: str          # which backend produced the SQL
-    used_fallback: bool    # True if the deterministic intent parser was used
+    provider: str
+    used_fallback: bool
     error: Optional[str] = None
 
 
-def _extract_json_sql(text: str) -> str:
-    """Extract the SQL string from the model output, tolerating fences."""
+def _extract_json_sql(text):
+    """Pull a SQL string out of the model's response, tolerating fences."""
     text = text.strip()
     text = re.sub(r"^```(?:json|sql)?", "", text).strip()
     text = re.sub(r"```$", "", text).strip()
@@ -54,7 +45,7 @@ def _extract_json_sql(text: str) -> str:
     except json.JSONDecodeError:
         pass
 
-    # Last-resort: find the first {...} block.
+    # Try to find the first {...} block.
     m = re.search(r"\{.*?\}", text, flags=re.DOTALL)
     if m:
         try:
@@ -64,17 +55,16 @@ def _extract_json_sql(text: str) -> str:
         except json.JSONDecodeError:
             pass
 
-    # If the model just emitted raw SQL.
+    # Last resort: maybe the model just emitted raw SQL.
     if text.lower().lstrip().startswith(("select", "with")):
         return text
+
     raise ValueError(f"Could not extract SQL from LLM response: {text[:200]}")
 
 
-# -------------------------- Fallback intent parser --------------------------
-# IMPORTANT: order matters — more specific patterns MUST come before
-# generic ones. The first match wins.
-_FALLBACK_INTENTS: list[tuple[re.Pattern, str]] = [
-    # ---- Specific groupings (must come before the generic "default rate") ----
+# ---- Fallback intent parser ----
+# Specific patterns must come BEFORE the generic ones. First match wins.
+_FALLBACK_INTENTS = [
     (
         re.compile(r"\b(by|per)\b.*\b(education|education level)\b", re.I),
         (
@@ -110,7 +100,6 @@ _FALLBACK_INTENTS: list[tuple[re.Pattern, str]] = [
             "FROM applications GROUP BY NAME_HOUSING_TYPE ORDER BY default_rate_pct DESC"
         ),
     ),
-    # ---- Income / financial questions ----
     (
         re.compile(r"\baverage\s+(income|amt_income)|defaulters?\s+vs\b", re.I),
         (
@@ -138,7 +127,6 @@ _FALLBACK_INTENTS: list[tuple[re.Pattern, str]] = [
             "GROUP BY TARGET"
         ),
     ),
-    # ---- Generic counts and rates (MUST come last) ----
     (
         re.compile(r"how many\b.*\b(applicants|rows|records|clients|loans)", re.I),
         "SELECT COUNT(*) AS total_applicants FROM applications",
@@ -150,15 +138,15 @@ _FALLBACK_INTENTS: list[tuple[re.Pattern, str]] = [
 ]
 
 
-def _fallback_sql(question: str) -> Optional[str]:
+def _fallback_sql(question):
     for pat, sql in _FALLBACK_INTENTS:
         if pat.search(question):
             return sql
     return None
 
 
-def _summarise(question: str, sql: str, df: pd.DataFrame, provider: str) -> str:
-    """Use the LLM to produce a 2-4 sentence answer; fall back to a template."""
+def _summarise(question, sql, df, provider):
+    """Get a 2-4 sentence summary. Falls back to a template if the LLM fails."""
     rows = df.head(20).to_dict(orient="records")
     if provider == "fallback":
         return _format_table_summary(df)
@@ -171,7 +159,7 @@ def _summarise(question: str, sql: str, df: pd.DataFrame, provider: str) -> str:
         return _format_table_summary(df)
 
 
-def _format_table_summary(df: pd.DataFrame) -> str:
+def _format_table_summary(df):
     if df.empty:
         return "No rows matched the question."
     if df.shape == (1, 1):
@@ -181,12 +169,10 @@ def _format_table_summary(df: pd.DataFrame) -> str:
     return f"Returned {len(df)} row(s). See the table for details."
 
 
-# ----------------------------- Public API -----------------------------
-def answer(question: str) -> AgentAnswer:
+def answer(question):
     schema = get_table_schema()
     provider = active_provider()
     used_fallback = provider == "fallback"
-    sql_raw: str
 
     if used_fallback:
         sql_raw = _fallback_sql(question) or (
@@ -197,8 +183,8 @@ def answer(question: str) -> AgentAnswer:
             client = get_client()
             llm_text = client.chat(build_messages(schema, question))
             sql_raw = _extract_json_sql(llm_text)
-        except (LLMUnavailable, Exception) as e:
-            # Hard-fall-through to the deterministic parser.
+        except (LLMUnavailable, Exception):
+            # LLM died -- use the deterministic parser instead of giving up.
             used_fallback = True
             provider = "fallback"
             sql_raw = _fallback_sql(question) or (

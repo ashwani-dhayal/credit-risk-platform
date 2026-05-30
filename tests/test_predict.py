@@ -1,6 +1,4 @@
-"""Smoke test for the prediction pipeline (requires a trained model)."""
-from __future__ import annotations
-
+"""Smoke test for predict_one. Requires a trained model artifact."""
 import sys
 from pathlib import Path
 
@@ -9,7 +7,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import SETTINGS  # noqa: E402
+from src.config import SETTINGS
 
 
 @pytest.mark.skipif(
@@ -18,6 +16,7 @@ from src.config import SETTINGS  # noqa: E402
 )
 def test_predict_one_returns_band():
     from src.ml.predict import predict_one
+
     sample = {
         "NAME_CONTRACT_TYPE": "Cash loans",
         "CODE_GENDER": "F",

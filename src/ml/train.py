@@ -1,20 +1,4 @@
-"""Train the LightGBM credit-risk model.
-
-Design decisions (documented in README):
-- LightGBM was chosen over logistic regression for its strong default
-  performance on tabular credit data and built-in handling of mixed
-  feature types after one-hot encoding.
-- Class imbalance (~8% defaults) is handled via `class_weight="balanced"`
-  AND by tuning `scale_pos_weight` from data; we use scale_pos_weight
-  because it consistently outperforms naive over-/under-sampling on this
-  dataset and avoids leaking synthetic samples into validation.
-- Primary metric is ROC-AUC (the Kaggle competition metric); we also
-  report KS, F1 at the threshold that maximises Youden's J, and a
-  classification report.
-- Stratified train/val split (80/20) keeps the default ratio constant.
-"""
-
-from __future__ import annotations
+"""Train the LightGBM credit-risk model."""
 
 import json
 import time
@@ -23,7 +7,6 @@ from pathlib import Path
 
 import joblib
 import numpy as np
-import pandas as pd
 from lightgbm import LGBMClassifier
 from sklearn.metrics import (
     average_precision_score,
@@ -53,22 +36,23 @@ class TrainingResult:
     ks_statistic: float
     f1_at_optimal_threshold: float
     optimal_threshold: float
-    confusion_matrix: list[list[int]]
+    confusion_matrix: list
     n_train: int
     n_val: int
     default_rate: float
     model_path: str
-    feature_names: list[str]
-    feature_importances: dict[str, float]
+    feature_names: list
+    feature_importances: dict
     training_seconds: float
 
 
-def _ks_statistic(y_true: np.ndarray, y_prob: np.ndarray) -> float:
+def _ks_statistic(y_true, y_prob):
     fpr, tpr, _ = roc_curve(y_true, y_prob)
     return float(np.max(tpr - fpr))
 
 
-def train(random_state: int = 42) -> TrainingResult:
+def train(random_state=42):
+    """End-to-end training run. Persists the pipeline + metrics."""
     t0 = time.time()
     df = load_dataframe()
     df = add_engineered_features(df)
@@ -81,6 +65,8 @@ def train(random_state: int = 42) -> TrainingResult:
     )
 
     preprocessor = build_preprocessor()
+    # scale_pos_weight handles the ~8% class imbalance. We compute it
+    # from the training fold only (no val leak).
     pos_weight = float((y_train == 0).sum() / max((y_train == 1).sum(), 1))
 
     lgbm = LGBMClassifier(
@@ -110,6 +96,7 @@ def train(random_state: int = 42) -> TrainingResult:
     pr_auc = float(average_precision_score(y_val, proba_val))
     ks = _ks_statistic(y_val, proba_val)
 
+    # Pick the threshold that maximises Youden's J on the validation set.
     fpr, tpr, thresholds = roc_curve(y_val, proba_val)
     j = tpr - fpr
     best_idx = int(np.argmax(j))

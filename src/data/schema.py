@@ -1,45 +1,14 @@
-"""Schema definitions for the Home Credit Default Risk dataset.
+"""Column lists for the application_train table.
 
-We model only the `application_train` columns we actively use. The full
-Kaggle dataset has 122 columns; we keep the 18 that are most informative
-for default prediction and that an analyst would realistically ask about.
-This keeps the SQLite schema small, the prompts cheap, and the model
-interpretable.
+We don't keep all 122 Kaggle columns - just the 23 that move the model
+and that an analyst is actually likely to ask about. Smaller schema =
+smaller prompts, smaller DB, and a model that's still easy to read.
 """
 
-from __future__ import annotations
-
-from typing import Final
-
-# Columns retained from application_train.csv
-CORE_COLUMNS: Final[list[str]] = [
-    "SK_ID_CURR",          # primary key
-    "TARGET",              # 1 = default, 0 = repaid (only in train)
-    "NAME_CONTRACT_TYPE",  # Cash loans / Revolving loans
-    "CODE_GENDER",
-    "FLAG_OWN_CAR",
-    "FLAG_OWN_REALTY",
-    "CNT_CHILDREN",
-    "AMT_INCOME_TOTAL",
-    "AMT_CREDIT",
-    "AMT_ANNUITY",
-    "AMT_GOODS_PRICE",
-    "NAME_INCOME_TYPE",
-    "NAME_EDUCATION_TYPE",
-    "NAME_FAMILY_STATUS",
-    "NAME_HOUSING_TYPE",
-    "DAYS_BIRTH",          # negative integer (days before application)
-    "DAYS_EMPLOYED",       # negative integer; 365243 sentinel = unemployed
-    "OCCUPATION_TYPE",
-    "CNT_FAM_MEMBERS",
-    "REGION_RATING_CLIENT",
-    "EXT_SOURCE_1",
-    "EXT_SOURCE_2",
-    "EXT_SOURCE_3",
-]
-
-# Columns the user enters via the UI form (subset, with friendly defaults)
-UI_INPUT_COLUMNS: Final[list[str]] = [
+# ---- columns we keep from application_train.csv ----
+CORE_COLUMNS = [
+    "SK_ID_CURR",
+    "TARGET",
     "NAME_CONTRACT_TYPE",
     "CODE_GENDER",
     "FLAG_OWN_CAR",
@@ -63,7 +32,33 @@ UI_INPUT_COLUMNS: Final[list[str]] = [
     "EXT_SOURCE_3",
 ]
 
-CATEGORICAL_COLUMNS: Final[list[str]] = [
+# Fields the user fills in the Streamlit form (subset of CORE_COLUMNS,
+# minus the IDs and target).
+UI_INPUT_COLUMNS = [
+    "NAME_CONTRACT_TYPE",
+    "CODE_GENDER",
+    "FLAG_OWN_CAR",
+    "FLAG_OWN_REALTY",
+    "CNT_CHILDREN",
+    "AMT_INCOME_TOTAL",
+    "AMT_CREDIT",
+    "AMT_ANNUITY",
+    "AMT_GOODS_PRICE",
+    "NAME_INCOME_TYPE",
+    "NAME_EDUCATION_TYPE",
+    "NAME_FAMILY_STATUS",
+    "NAME_HOUSING_TYPE",
+    "DAYS_BIRTH",
+    "DAYS_EMPLOYED",
+    "OCCUPATION_TYPE",
+    "CNT_FAM_MEMBERS",
+    "REGION_RATING_CLIENT",
+    "EXT_SOURCE_1",
+    "EXT_SOURCE_2",
+    "EXT_SOURCE_3",
+]
+
+CATEGORICAL_COLUMNS = [
     "NAME_CONTRACT_TYPE",
     "CODE_GENDER",
     "FLAG_OWN_CAR",
@@ -75,7 +70,7 @@ CATEGORICAL_COLUMNS: Final[list[str]] = [
     "OCCUPATION_TYPE",
 ]
 
-NUMERIC_COLUMNS: Final[list[str]] = [
+NUMERIC_COLUMNS = [
     "CNT_CHILDREN",
     "AMT_INCOME_TOTAL",
     "AMT_CREDIT",
@@ -90,8 +85,8 @@ NUMERIC_COLUMNS: Final[list[str]] = [
     "EXT_SOURCE_3",
 ]
 
-# Engineered features added in preprocess.add_engineered_features()
-ENGINEERED_COLUMNS: Final[list[str]] = [
+# These get added by preprocess.add_engineered_features().
+ENGINEERED_COLUMNS = [
     "AGE_YEARS",
     "EMPLOYMENT_YEARS",
     "CREDIT_INCOME_RATIO",
@@ -101,8 +96,8 @@ ENGINEERED_COLUMNS: Final[list[str]] = [
     "EXT_SOURCE_MEAN",
 ]
 
-# Friendly column descriptions surfaced to the LLM and the UI.
-COLUMN_DESCRIPTIONS: Final[dict[str, str]] = {
+# Short descriptions shown to the LLM (for SQL generation) and to the UI.
+COLUMN_DESCRIPTIONS = {
     "SK_ID_CURR": "Unique application ID",
     "TARGET": "1 if the client defaulted, 0 if repaid on time",
     "NAME_CONTRACT_TYPE": "Loan type (Cash loans or Revolving loans)",
@@ -135,4 +130,4 @@ COLUMN_DESCRIPTIONS: Final[dict[str, str]] = {
     "EXT_SOURCE_MEAN": "Mean of EXT_SOURCE_1/2/3 (engineered)",
 }
 
-TABLE_NAME: Final[str] = "applications"
+TABLE_NAME = "applications"

@@ -1,36 +1,19 @@
-"""Streamlit multi-section UI for the Credit Risk Intelligence Platform.
-
-Sections (left sidebar):
-  1. Overview
-  2. EDA
-  3. Risk Prediction
-  4. Explainability
-  5. Decision Rules
-  6. Talk-to-Data Chatbot
-"""
-
-from __future__ import annotations
+"""Streamlit UI: Overview, EDA, Predict, Explain, Rules, Chatbot."""
 
 import json
 import sys
 from pathlib import Path
 
-# Make `src` importable when running with `streamlit run app/streamlit_app.py`
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-import pandas as pd  # noqa: E402
-import plotly.express as px  # noqa: E402
-import streamlit as st  # noqa: E402
+import pandas as pd
+import plotly.express as px
+import streamlit as st
 
-from src.config import SETTINGS  # noqa: E402
-from src.data.loader import ingest_to_sqlite, load_dataframe  # noqa: E402
-from src.data.preprocess import add_engineered_features  # noqa: E402
-from src.data.schema import (  # noqa: E402
-    CATEGORICAL_COLUMNS,
-    COLUMN_DESCRIPTIONS,
-    UI_INPUT_COLUMNS,
-)
+from src.config import SETTINGS
+from src.data.loader import ingest_to_sqlite, load_dataframe
+from src.data.preprocess import add_engineered_features
 
 st.set_page_config(
     page_title="Credit Risk Intelligence Platform",
@@ -40,16 +23,16 @@ st.set_page_config(
 )
 
 
-# ---------------------------- Cached data loaders ----------------------------
+# ---- cached loaders ----
 @st.cache_data(show_spinner=False)
-def get_data() -> pd.DataFrame:
+def get_data():
     ingest_to_sqlite(force=False)
     df = load_dataframe()
     return add_engineered_features(df)
 
 
 @st.cache_data(show_spinner=False)
-def get_metrics() -> dict | None:
+def get_metrics():
     p = SETTINGS.models_dir / "metrics.json"
     if p.exists():
         return json.loads(p.read_text())
@@ -57,14 +40,14 @@ def get_metrics() -> dict | None:
 
 
 @st.cache_data(show_spinner=False)
-def get_rules() -> list[dict]:
+def get_rules():
     p = SETTINGS.models_dir / "rules.json"
     if p.exists():
         return json.loads(p.read_text())
     return []
 
 
-# ----------------------------- Sidebar nav ----------------------------
+# ---- sidebar ----
 with st.sidebar:
     st.title("💳 Credit Risk")
     st.caption("AI-Powered Credit Risk Intelligence Platform")
@@ -87,12 +70,10 @@ with st.sidebar:
     if SETTINGS.model_path.exists():
         st.success(f"loaded: {SETTINGS.model_path.name}")
     else:
-        st.warning("Not trained yet — run\n`python scripts/train_model.py`")
+        st.warning("Not trained yet. Run\n`python scripts/train_model.py`")
 
 
-# =========================================================================
-# Section 1: Overview
-# =========================================================================
+# ============================ Overview ============================
 def render_overview():
     st.title("AI-Powered Credit Risk Intelligence Platform")
     st.markdown(
@@ -126,9 +107,7 @@ def render_overview():
     )
 
 
-# =========================================================================
-# Section 2: EDA
-# =========================================================================
+# ============================ EDA ============================
 def render_eda():
     st.title("📊 Exploratory Data Analysis")
     df = get_data()
@@ -143,6 +122,7 @@ def render_eda():
         c1.write(f"**Rows:** {len(df):,}")
         c1.write(f"**Columns:** {df.shape[1]}")
         c1.write(f"**Default rate:** {df['TARGET'].mean()*100:.2f}%")
+
         c2.write("**Missing values (top 10):**")
         missing = (
             df.isna().sum().sort_values(ascending=False).head(10).reset_index()
@@ -165,9 +145,7 @@ def render_eda():
             )
             st.plotly_chart(fig, use_container_width=True)
         with c2:
-            gender_def = (
-                df.groupby("CODE_GENDER")["TARGET"].mean().reset_index()
-            )
+            gender_def = df.groupby("CODE_GENDER")["TARGET"].mean().reset_index()
             gender_def["default_rate_pct"] = gender_def["TARGET"] * 100
             fig = px.bar(
                 gender_def, x="CODE_GENDER", y="default_rate_pct",
@@ -207,7 +185,7 @@ def render_eda():
 
     with tab3:
         st.subheader("Financials")
-        # Trim extreme tails for visualisation only.
+        # trim the long tail so the histograms are readable
         view = df[df["AMT_INCOME_TOTAL"] < df["AMT_INCOME_TOTAL"].quantile(0.99)]
         c1, c2 = st.columns(2)
         with c1:
@@ -273,9 +251,7 @@ def render_eda():
     )
 
 
-# =========================================================================
-# Section 3: Risk Prediction
-# =========================================================================
+# ============================ Predict ============================
 def render_predict():
     st.title("🎯 Risk Prediction")
     st.markdown(
@@ -290,22 +266,18 @@ def render_predict():
         )
         return
 
-    from src.ml.predict import predict_one  # local import to avoid cold start
+    from src.ml.predict import predict_one
 
     df = get_data()
 
-    def _options(col: str) -> list[str]:
+    def options(col):
         return sorted([str(x) for x in df[col].dropna().unique().tolist()])
 
     with st.form("predict_form"):
         c1, c2, c3 = st.columns(3)
         with c1:
-            contract = st.selectbox(
-                "Contract type", _options("NAME_CONTRACT_TYPE"), index=0
-            )
-            gender = st.selectbox(
-                "Gender", _options("CODE_GENDER"), index=0
-            )
+            contract = st.selectbox("Contract type", options("NAME_CONTRACT_TYPE"), index=0)
+            gender = st.selectbox("Gender", options("CODE_GENDER"), index=0)
             own_car = st.selectbox("Owns car", ["Y", "N"], index=1)
             own_realty = st.selectbox("Owns realty", ["Y", "N"], index=0)
             children = st.number_input("Children", 0, 10, 0)
@@ -319,11 +291,11 @@ def render_predict():
             region = st.selectbox("Region rating (1=best, 3=worst)", [1, 2, 3], index=1)
 
         with c3:
-            income_type = st.selectbox("Income type", _options("NAME_INCOME_TYPE"))
-            education = st.selectbox("Education", _options("NAME_EDUCATION_TYPE"))
-            family_status = st.selectbox("Family status", _options("NAME_FAMILY_STATUS"))
-            housing = st.selectbox("Housing", _options("NAME_HOUSING_TYPE"))
-            occupation_opts = ["(unknown)"] + _options("OCCUPATION_TYPE")
+            income_type = st.selectbox("Income type", options("NAME_INCOME_TYPE"))
+            education = st.selectbox("Education", options("NAME_EDUCATION_TYPE"))
+            family_status = st.selectbox("Family status", options("NAME_FAMILY_STATUS"))
+            housing = st.selectbox("Housing", options("NAME_HOUSING_TYPE"))
+            occupation_opts = ["(unknown)"] + options("OCCUPATION_TYPE")
             occupation = st.selectbox("Occupation", occupation_opts, index=0)
             age_years = st.number_input("Age (years)", 21, 70, 35)
             emp_years = st.number_input("Years employed", 0.0, 45.0, 5.0, step=0.5)
@@ -339,7 +311,7 @@ def render_predict():
     if not submitted:
         return
 
-    def _f(s: str):
+    def parse_float(s):
         s = s.strip()
         if not s:
             return None
@@ -367,9 +339,9 @@ def render_predict():
         "OCCUPATION_TYPE": None if occupation == "(unknown)" else occupation,
         "CNT_FAM_MEMBERS": fam_members,
         "REGION_RATING_CLIENT": region,
-        "EXT_SOURCE_1": _f(ext1),
-        "EXT_SOURCE_2": _f(ext2),
-        "EXT_SOURCE_3": _f(ext3),
+        "EXT_SOURCE_1": parse_float(ext1),
+        "EXT_SOURCE_2": parse_float(ext2),
+        "EXT_SOURCE_3": parse_float(ext3),
     }
 
     pred = predict_one(applicant)
@@ -384,7 +356,7 @@ def render_predict():
 
     st.progress(min(pred.probability_default, 1.0))
 
-    # Stash for the explainability tab
+    # Stash for the explainability tab.
     st.session_state["last_applicant"] = applicant
     st.session_state["last_prediction"] = pred.__dict__
 
@@ -392,9 +364,7 @@ def render_predict():
         st.json(applicant)
 
 
-# =========================================================================
-# Section 4: Explainability
-# =========================================================================
+# ============================ Explain ============================
 def render_explain():
     st.title("🔍 Explainability (SHAP)")
 
@@ -420,8 +390,10 @@ def render_explain():
             title="Top contributors to this prediction (SHAP values)",
         )
         st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(df[["feature", "value", "shap_value", "direction"]],
-                     use_container_width=True, hide_index=True)
+        st.dataframe(
+            df[["feature", "value", "shap_value", "direction"]],
+            use_container_width=True, hide_index=True,
+        )
 
     with tab2:
         with st.spinner("Computing SHAP across a sample…"):
@@ -434,9 +406,7 @@ def render_explain():
         st.plotly_chart(fig, use_container_width=True)
 
 
-# =========================================================================
-# Section 5: Decision Rules
-# =========================================================================
+# ============================ Rules ============================
 def render_rules():
     st.title("📜 Business-Readable Decision Rules")
     st.markdown(
@@ -444,6 +414,7 @@ def render_rules():
         "engineered features as the LightGBM model. Each row is a leaf — the "
         "table shows its support, default rate, and lift vs. the base rate."
     )
+
     rules = get_rules()
     if not rules:
         st.warning(
@@ -454,6 +425,7 @@ def render_rules():
 
     df = pd.DataFrame(rules)
     df["conditions"] = df["conditions"].apply(lambda c: " AND ".join(c) if c else "—")
+
     show = df[["rule_id", "band", "conditions", "support_pct",
                "default_rate_pct", "lift", "n_samples"]]
     st.dataframe(show, use_container_width=True, hide_index=True)
@@ -470,9 +442,7 @@ def render_rules():
             st.code(f"IF {r['conditions']} THEN {r['band']} risk", language="text")
 
 
-# =========================================================================
-# Section 6: Talk-to-Data Chatbot
-# =========================================================================
+# ============================ Chatbot ============================
 def render_chatbot():
     st.title("💬 Talk-to-Data")
     st.caption(
@@ -521,7 +491,7 @@ def render_chatbot():
         )
 
 
-# =================================== Router ==================================
+# ---- router ----
 ROUTES = {
     "🏠 Overview": render_overview,
     "📊 EDA": render_eda,

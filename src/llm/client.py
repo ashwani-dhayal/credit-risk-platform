@@ -1,19 +1,9 @@
-"""Multi-provider LLM client with auto-detection.
+"""Thin wrapper over OpenAI / Groq / Gemini.
 
-Priority order (first non-empty key wins):
-  1. OpenAI       (gpt-4o-mini default)
-  2. Groq         (llama-3.1-8b-instant default, fast & free tier)
-  3. Google Gemini (gemini-1.5-flash default, free tier)
-  4. Fallback     (no network; rule-based intent parser in nl_to_sql)
-
-Each provider is wrapped in a thin adapter exposing `.chat(messages)` that
-returns a plain string. We use tenacity for one retry with exponential
-back-off to handle transient 5xx/429 errors.
+Whichever API key is set wins. Order of preference: OpenAI, Groq, Gemini.
+If none is set, callers should use the deterministic fallback in
+nl_to_sql.py instead of calling get_client().
 """
-
-from __future__ import annotations
-
-from typing import Any
 
 from tenacity import retry, stop_after_attempt, wait_exponential_jitter
 
@@ -21,20 +11,20 @@ from src.config import SETTINGS
 
 
 class LLMUnavailable(RuntimeError):
-    """Raised when no provider is configured or the call fails."""
+    """No provider configured, or all providers errored out."""
 
 
 class _BaseClient:
-    name: str = "base"
+    name = "base"
 
-    def chat(self, messages: list[dict]) -> str:
+    def chat(self, messages):
         raise NotImplementedError
 
 
 class _OpenAIClient(_BaseClient):
     name = "openai"
 
-    def __init__(self) -> None:
+    def __init__(self):
         from openai import OpenAI
         self._client = OpenAI(
             api_key=SETTINGS.openai_api_key,
@@ -42,7 +32,7 @@ class _OpenAIClient(_BaseClient):
         )
 
     @retry(stop=stop_after_attempt(2), wait=wait_exponential_jitter(initial=1, max=4))
-    def chat(self, messages: list[dict]) -> str:
+    def chat(self, messages):
         resp = self._client.chat.completions.create(
             model=SETTINGS.openai_model,
             messages=messages,
@@ -55,7 +45,7 @@ class _OpenAIClient(_BaseClient):
 class _GroqClient(_BaseClient):
     name = "groq"
 
-    def __init__(self) -> None:
+    def __init__(self):
         from groq import Groq
         self._client = Groq(
             api_key=SETTINGS.groq_api_key,
@@ -63,7 +53,7 @@ class _GroqClient(_BaseClient):
         )
 
     @retry(stop=stop_after_attempt(2), wait=wait_exponential_jitter(initial=1, max=4))
-    def chat(self, messages: list[dict]) -> str:
+    def chat(self, messages):
         resp = self._client.chat.completions.create(
             model=SETTINGS.groq_model,
             messages=messages,
@@ -76,16 +66,14 @@ class _GroqClient(_BaseClient):
 class _GeminiClient(_BaseClient):
     name = "gemini"
 
-    def __init__(self) -> None:
+    def __init__(self):
         import google.generativeai as genai
         genai.configure(api_key=SETTINGS.gemini_api_key)
-        self._genai = genai
         self._model = genai.GenerativeModel(SETTINGS.gemini_model)
 
     @retry(stop=stop_after_attempt(2), wait=wait_exponential_jitter(initial=1, max=4))
-    def chat(self, messages: list[dict]) -> str:
-        # Gemini has no native "system" role — fold system into the first
-        # user turn for parity with OpenAI/Groq.
+    def chat(self, messages):
+        # Gemini has no system role - merge into the user prompt.
         sys_parts = [m["content"] for m in messages if m["role"] == "system"]
         usr_parts = [m["content"] for m in messages if m["role"] != "system"]
         prompt = ("\n\n".join(sys_parts) + "\n\n" + "\n\n".join(usr_parts)).strip()
@@ -99,8 +87,7 @@ class _GeminiClient(_BaseClient):
         return (getattr(resp, "text", None) or "").strip()
 
 
-def get_client() -> _BaseClient:
-    """Return the first available LLM client based on configured keys."""
+def get_client():
     provider = SETTINGS.active_llm_provider
     if provider == "openai":
         return _OpenAIClient()
@@ -114,5 +101,5 @@ def get_client() -> _BaseClient:
     )
 
 
-def active_provider() -> str:
+def active_provider():
     return SETTINGS.active_llm_provider

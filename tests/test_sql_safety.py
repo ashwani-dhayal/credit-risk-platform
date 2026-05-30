@@ -1,13 +1,11 @@
-"""Unit tests for the SQL safety guardrails."""
-from __future__ import annotations
-
+"""Tests for the SQL safety guard."""
 import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.utils.sql_safety import validate_and_harden  # noqa: E402
+from src.utils.sql_safety import validate_and_harden
 
 
 def test_simple_select_passes():
@@ -17,28 +15,23 @@ def test_simple_select_passes():
 
 
 def test_drop_blocked():
-    v = validate_and_harden("DROP TABLE applications")
-    assert not v.ok
+    assert not validate_and_harden("DROP TABLE applications").ok
 
 
 def test_insert_blocked():
-    v = validate_and_harden("INSERT INTO applications VALUES (1)")
-    assert not v.ok
+    assert not validate_and_harden("INSERT INTO applications VALUES (1)").ok
 
 
 def test_multistatement_blocked():
-    v = validate_and_harden("SELECT 1; SELECT 2")
-    assert not v.ok
+    assert not validate_and_harden("SELECT 1; SELECT 2").ok
 
 
 def test_unknown_table_blocked():
-    v = validate_and_harden("SELECT * FROM users")
-    assert not v.ok
+    assert not validate_and_harden("SELECT * FROM users").ok
 
 
 def test_attach_blocked():
-    v = validate_and_harden("ATTACH DATABASE 'foo.db' AS f")
-    assert not v.ok
+    assert not validate_and_harden("ATTACH DATABASE 'foo.db' AS f").ok
 
 
 def test_with_cte_passes():
@@ -46,8 +39,7 @@ def test_with_cte_passes():
         "WITH t AS (SELECT TARGET FROM applications) "
         "SELECT AVG(TARGET) AS rate FROM t"
     )
-    v = validate_and_harden(sql)
-    assert v.ok
+    assert validate_and_harden(sql).ok
 
 
 def test_existing_limit_preserved():

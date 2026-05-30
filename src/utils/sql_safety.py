@@ -1,16 +1,8 @@
-"""SQL safety guardrails for the talk-to-data chatbot.
+"""SQL safety guard for the talk-to-data agent.
 
-The LLM is constrained by the prompt to emit a single read-only SELECT,
-but we *also* enforce that statically before execution:
-
-1. Single-statement only (no `;` chaining).
-2. Must start with SELECT or WITH (CTE).
-3. Forbidden keywords are blocked (DDL, DML, attach, pragma, etc.).
-4. Only the allowed table can be referenced.
-5. Hard LIMIT cap injected if missing.
+The LLM prompt asks for a single SELECT, but we don't trust it. This
+module enforces the same rules statically before anything hits SQLite.
 """
-
-from __future__ import annotations
 
 import re
 from dataclasses import dataclass
@@ -18,6 +10,7 @@ from dataclasses import dataclass
 import sqlparse
 
 ALLOWED_TABLES = {"applications"}
+
 FORBIDDEN_PATTERNS = [
     r"\b(insert|update|delete|drop|alter|create|replace|truncate|grant|revoke)\b",
     r"\battach\b",
@@ -38,7 +31,7 @@ class SqlValidation:
     reason: str = ""
 
 
-def validate_and_harden(sql: str) -> SqlValidation:
+def validate_and_harden(sql):
     raw = sql.strip().rstrip(";").strip()
     if not raw:
         return SqlValidation(False, "", "Empty SQL.")
@@ -63,11 +56,10 @@ def validate_and_harden(sql: str) -> SqlValidation:
     if head not in {"SELECT", "WITH"}:
         return SqlValidation(False, raw, "Only SELECT/WITH queries are permitted.")
 
-    # Collect CTE aliases (so `WITH t AS (... applications ...)` works).
+    # Recognise CTE aliases so `WITH t AS (...) SELECT * FROM t` works.
     cte_aliases = set(
         re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\s+as\s*\(", lowered)
     )
-    # Reject any reference to unknown tables (cheap heuristic).
     table_refs = set(re.findall(r"\bfrom\s+([a-zA-Z_][a-zA-Z0-9_]*)", lowered))
     table_refs |= set(re.findall(r"\bjoin\s+([a-zA-Z_][a-zA-Z0-9_]*)", lowered))
     unknown = table_refs - ALLOWED_TABLES - cte_aliases
@@ -76,7 +68,8 @@ def validate_and_harden(sql: str) -> SqlValidation:
             False, raw, f"Reference to disallowed table(s): {sorted(unknown)}"
         )
 
-    # Inject a LIMIT cap if the query doesn't have one.
+    # If the query has no LIMIT, add one so a runaway aggregate can't
+    # return 300k rows to the UI.
     hardened = raw
     if not re.search(r"\blimit\s+\d+\b", lowered):
         hardened = f"{raw}\nLIMIT {MAX_ROWS}"

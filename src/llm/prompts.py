@@ -1,17 +1,4 @@
-"""Prompt templates for the talk-to-data agent.
-
-Token-optimisation notes (covered in README):
-- We pin the schema (~25 columns) into the system prompt once. The user
-  question is the only growing variable.
-- We instruct the LLM to emit ONLY a JSON object: {"sql": "..."}; no
-  prose, no markdown fences. This makes parsing deterministic and avoids
-  hallucinated commentary.
-- Few-shot examples are minimal (4 short cases) — enough to anchor the
-  style without bloating context.
-- Temperature 0 + max 256 output tokens (set in config).
-"""
-
-from __future__ import annotations
+"""Prompts used by the talk-to-data agent."""
 
 SYSTEM_PROMPT = """You are a SQL analyst for a credit-risk platform.
 
@@ -33,6 +20,7 @@ Hard rules:
 If the question cannot be answered with the schema, return
 {"sql": "SELECT 'unanswerable_with_schema' AS note"}."""
 
+# Few-shot examples. Kept short on purpose so input tokens stay low.
 FEW_SHOT = [
     {
         "q": "How many applicants are there in total?",
@@ -70,8 +58,7 @@ FEW_SHOT = [
 ]
 
 
-def build_messages(schema_text: str, question: str) -> list[dict]:
-    """Construct chat messages for the LLM call. Compact and reusable."""
+def build_messages(schema_text, question):
     examples = "\n".join(
         f'Q: {ex["q"]}\nA: {{"sql": "{ex["sql"]}"}}' for ex in FEW_SHOT
     )
@@ -93,7 +80,7 @@ the answer in plain English. State concrete numbers from the rows. Do NOT
 invent numbers that are not in the rows. If the result is empty, say so."""
 
 
-def build_summary_messages(question: str, rows_json: str, sql: str) -> list[dict]:
+def build_summary_messages(question, rows_json, sql):
     return [
         {"role": "system", "content": SUMMARISE_SYSTEM},
         {
