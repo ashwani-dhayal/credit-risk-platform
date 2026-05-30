@@ -292,6 +292,31 @@ def _check_knowledge_base(question):
     return None
 
 
+# Patterns that indicate a question is NOT about querying the dataset.
+# These should go to the general LLM, not the SQL pipeline.
+_NON_DATA_PATTERNS = [
+    re.compile(r"^(hi|hello|hey|howdy|greetings)\b", re.I),
+    re.compile(r"^how\s+are\s+you", re.I),
+    re.compile(r"^(what|whats)\s+(is\s+)?(the\s+)?(today|time|date|day)", re.I),
+    re.compile(r"^(who|what)\s+are\s+you", re.I),
+    re.compile(r"^(thank|thanks|bye|goodbye)", re.I),
+    re.compile(r"^what\s+(is|are)\s+(a\s+|an\s+)?(loan|emi|interest|mortgage|collateral|npa|cibil|fico|banking|bank|finance|debt|equity|asset|liability|budget|savings?|investment|mutual fund|stock|bond|inflation|gdp|rbi|sebi|credit card|debit card|insurance|premium|risk|portfolio|diversif|amortiz|securiti|liquidity|solvency|capital|revenue|profit|loss|balance sheet|cash flow|roi|roe|eps|pe ratio|dividend|compound interest|simple interest|fixed deposit|recurring deposit|net worth|ipo|bull market|bear market|recession|depression|fiscal|monetary|tax|gst|income tax|tds)\b", re.I),
+    re.compile(r"^(explain|define|describe|tell me about|what do you mean by)\s+", re.I),
+    re.compile(r"^(how|why|when|where)\s+(do|does|did|can|could|should|would|is|are|was|were)\s+.{3,}(?!.*\b(applicants?|clients?|loans?|default|data|dataset|table|rows?|records?|count|average|total|sum|max|min|group|rate|percentage)\b)", re.I),
+    re.compile(r"^(can you|could you|please)\s+(explain|tell|help|describe)", re.I),
+    re.compile(r"\b(meaning|definition|concept|theory|principle)\b.*\??\s*$", re.I),
+]
+
+
+def _is_general_question(question):
+    """Detect if a question is conversational/general rather than a data query."""
+    q = question.strip()
+    for pat in _NON_DATA_PATTERNS:
+        if pat.search(q):
+            return True
+    return False
+
+
 def _ask_llm_general(question):
     """Ask the LLM a general question directly (not SQL-related)."""
     try:
@@ -328,6 +353,20 @@ def answer(question):
             provider="knowledge_base",
             used_fallback=False,
         )
+
+    # If it looks like a conversational/general question, route to Groq
+    # directly instead of trying to make SQL out of it.
+    if _is_general_question(question):
+        general_answer = _ask_llm_general(question)
+        if general_answer:
+            return AgentAnswer(
+                question=question,
+                sql="-- General question (answered by AI assistant)",
+                rows=[],
+                answer=general_answer,
+                provider=active_provider(),
+                used_fallback=False,
+            )
 
     schema = get_table_schema()
     provider = active_provider()
