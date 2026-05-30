@@ -107,6 +107,7 @@ with st.sidebar:
             "🔍 Explainability",
             "📜 Decision Rules",
             "💬 Talk-to-Data",
+            "📈 Improve Your Score",
         ],
         label_visibility="collapsed",
     )
@@ -1069,6 +1070,259 @@ def render_chatbot():
                     pass
 
 
+# ============================ Improve Score ============================
+def render_improve_score():
+    st.title("📈 How to Improve Your Credit Score")
+    st.markdown("---")
+
+    st.markdown("""
+    Your **credit score** is a number that represents how likely you are to repay
+    a loan on time. Lenders use it to decide whether to approve your application,
+    what interest rate to offer, and how much credit to extend. A higher score means
+    better loan terms and lower interest rates.
+    """)
+
+    # Score ranges
+    st.markdown("### 🎯 Credit Score Ranges (CIBIL / India)")
+    with st.container(border=True):
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.markdown("""
+            <div style="text-align:center; padding:1rem; background:#e74c3c22; border-radius:8px;">
+                <h2 style="color:#e74c3c; margin:0;">300-549</h2>
+                <p style="margin:0;"><strong>Poor</strong></p>
+                <p style="font-size:0.8rem; margin:0;">Loan rejection likely</p>
+            </div>
+            """, unsafe_allow_html=True)
+        with c2:
+            st.markdown("""
+            <div style="text-align:center; padding:1rem; background:#f39c1222; border-radius:8px;">
+                <h2 style="color:#f39c12; margin:0;">550-649</h2>
+                <p style="margin:0;"><strong>Fair</strong></p>
+                <p style="font-size:0.8rem; margin:0;">Higher interest rates</p>
+            </div>
+            """, unsafe_allow_html=True)
+        with c3:
+            st.markdown("""
+            <div style="text-align:center; padding:1rem; background:#3498db22; border-radius:8px;">
+                <h2 style="color:#3498db; margin:0;">650-749</h2>
+                <p style="margin:0;"><strong>Good</strong></p>
+                <p style="font-size:0.8rem; margin:0;">Standard rates</p>
+            </div>
+            """, unsafe_allow_html=True)
+        with c4:
+            st.markdown("""
+            <div style="text-align:center; padding:1rem; background:#27ae6022; border-radius:8px;">
+                <h2 style="color:#27ae60; margin:0;">750-900</h2>
+                <p style="margin:0;"><strong>Excellent</strong></p>
+                <p style="font-size:0.8rem; margin:0;">Best rates & fast approval</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Tips section
+    st.markdown("### 💡 10 Actionable Steps to Improve Your Credit Score")
+
+    tips = [
+        {
+            "icon": "💳",
+            "title": "Pay Bills On Time, Every Time",
+            "desc": (
+                "Payment history is the single biggest factor (35% weightage). Even one "
+                "missed EMI or credit card payment can drop your score by 50-100 points. "
+                "Set up auto-pay or reminders for all dues."
+            ),
+            "impact": "High",
+        },
+        {
+            "icon": "📊",
+            "title": "Keep Credit Utilization Below 30%",
+            "desc": (
+                "If your credit card limit is ₹1,00,000, don't use more than ₹30,000 at any time. "
+                "High utilization signals desperation to lenders. Ideal is 10-20%."
+            ),
+            "impact": "High",
+        },
+        {
+            "icon": "🚫",
+            "title": "Don't Apply for Too Many Loans at Once",
+            "desc": (
+                "Each loan application triggers a 'hard inquiry' on your credit report, "
+                "which temporarily lowers your score by 5-10 points. Space out applications "
+                "by at least 3-6 months."
+            ),
+            "impact": "Medium",
+        },
+        {
+            "icon": "📅",
+            "title": "Maintain Old Credit Accounts",
+            "desc": (
+                "Length of credit history matters. Don't close your oldest credit card "
+                "even if you rarely use it — it adds to your credit age. A longer history "
+                "shows stability."
+            ),
+            "impact": "Medium",
+        },
+        {
+            "icon": "🔄",
+            "title": "Mix Your Credit Types",
+            "desc": (
+                "Having a healthy mix of secured loans (home, car) and unsecured credit "
+                "(credit cards, personal loans) shows lenders you can manage different "
+                "types of debt responsibly."
+            ),
+            "impact": "Medium",
+        },
+        {
+            "icon": "🔍",
+            "title": "Check Your Credit Report for Errors",
+            "desc": (
+                "Mistakes happen — wrong accounts, incorrect payment statuses, or "
+                "duplicate entries. Check your CIBIL report at least once a year and "
+                "dispute any errors immediately. This alone can boost your score."
+            ),
+            "impact": "High",
+        },
+        {
+            "icon": "💰",
+            "title": "Pay Off High-Interest Debt First",
+            "desc": (
+                "Focus on clearing credit card balances and personal loans first "
+                "(debt avalanche method). Reducing outstanding debt directly improves "
+                "your credit utilization ratio."
+            ),
+            "impact": "High",
+        },
+        {
+            "icon": "🏦",
+            "title": "Become an Authorized User",
+            "desc": (
+                "If a family member with excellent credit adds you as an authorized user "
+                "on their card, their positive payment history can reflect on your report too. "
+                "Make sure their utilization is low."
+            ),
+            "impact": "Low",
+        },
+        {
+            "icon": "📱",
+            "title": "Use Credit Monitoring Tools",
+            "desc": (
+                "Apps like CIBIL, Experian, or your bank's built-in tools let you "
+                "track your score monthly. Watching the trend helps you catch problems "
+                "early and stay motivated."
+            ),
+            "impact": "Low",
+        },
+        {
+            "icon": "⏰",
+            "title": "Be Patient — It Takes Time",
+            "desc": (
+                "Credit scores don't jump overnight. Consistent good behavior over "
+                "6-12 months is what moves the needle. A single negative mark takes "
+                "2-3 years to fully fade from your report."
+            ),
+            "impact": "Low",
+        },
+    ]
+
+    for i, tip in enumerate(tips, 1):
+        impact_color = {"High": "#e74c3c", "Medium": "#f39c12", "Low": "#3498db"}[tip["impact"]]
+        with st.container(border=True):
+            col1, col2 = st.columns([5, 1])
+            with col1:
+                st.markdown(f"**{tip['icon']} Tip {i}: {tip['title']}**")
+                st.markdown(tip["desc"])
+            with col2:
+                st.markdown(
+                    f'<div style="text-align:center; padding:0.5rem; '
+                    f'background:{impact_color}22; border-radius:6px; margin-top:0.5rem;">'
+                    f'<span style="color:{impact_color}; font-weight:bold; font-size:0.8rem;">'
+                    f'{tip["impact"]} Impact</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+    st.markdown("---")
+
+    # What our model looks at
+    st.markdown("### 🤖 What Our ML Model Considers Most Important")
+    st.markdown("""
+    Based on our trained model's SHAP analysis, these are the top factors that
+    determine whether an applicant is classified as high or low risk:
+    """)
+
+    factors = pd.DataFrame({
+        "Factor": [
+            "External Credit Scores (EXT_SOURCE)",
+            "Credit-to-Income Ratio",
+            "Age / Years of Experience",
+            "Education Level",
+            "Employment Stability (tenure)",
+            "Annuity-to-Income Ratio",
+            "Region Rating",
+            "Number of Children",
+        ],
+        "What It Means": [
+            "Scores from credit bureaus (CIBIL, Experian) — single strongest predictor",
+            "How much you're borrowing vs. how much you earn",
+            "Older applicants with more experience tend to default less",
+            "Higher education correlates with lower default rates",
+            "Longer time at current job = more stable = lower risk",
+            "Monthly payment as % of income — lower is better",
+            "Where you live affects risk (infrastructure, employment opportunities)",
+            "More dependents = more expenses = slightly higher risk",
+        ],
+        "You Can Improve?": [
+            "✅ Yes — pay EMIs on time, reduce debt",
+            "✅ Yes — borrow less or earn more",
+            "❌ No — but time is on your side",
+            "✅ Yes — pursue higher education/certifications",
+            "✅ Yes — stay at your current job longer",
+            "✅ Yes — choose longer loan tenure or smaller EMI",
+            "❌ No — geographic factor",
+            "❌ No — family planning is personal",
+        ],
+    })
+    st.dataframe(factors, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # Quick self-assessment
+    st.markdown("### ✅ Quick Self-Assessment Checklist")
+    st.markdown("Check how many of these you're doing right:")
+
+    checks = [
+        "I pay all EMIs and credit card bills before the due date",
+        "My credit card usage is below 30% of the limit",
+        "I haven't applied for new credit in the last 6 months",
+        "I have at least one credit account older than 3 years",
+        "I have a mix of credit types (card + loan)",
+        "I've checked my CIBIL report in the last 12 months",
+        "I have no outstanding defaults or write-offs",
+        "My total debt is less than 40% of my annual income",
+    ]
+
+    score = 0
+    for check in checks:
+        if st.checkbox(check):
+            score += 1
+
+    if score > 0:
+        st.markdown("---")
+        if score >= 7:
+            st.success(f"**{score}/8** — Excellent! You're doing most things right. "
+                      "Your credit score should be in good shape.")
+        elif score >= 5:
+            st.info(f"**{score}/8** — Good foundation, but there's room to improve. "
+                   "Focus on the unchecked items above.")
+        elif score >= 3:
+            st.warning(f"**{score}/8** — Fair. You have significant room for improvement. "
+                      "Start with Tip 1 (pay on time) and Tip 2 (reduce utilization).")
+        else:
+            st.error(f"**{score}/8** — Needs work. But don't worry — consistent effort "
+                    "over 6-12 months can dramatically improve your score. Start today.")
+
+
 # ---- router ----
 ROUTES = {
     "🏠 Overview": render_overview,
@@ -1077,5 +1331,6 @@ ROUTES = {
     "🔍 Explainability": render_explain,
     "📜 Decision Rules": render_rules,
     "💬 Talk-to-Data": render_chatbot,
+    "📈 Improve Your Score": render_improve_score,
 }
 ROUTES[section]()
