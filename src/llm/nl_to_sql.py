@@ -359,7 +359,12 @@ _NON_DATA_PATTERNS = [
     re.compile(r"^(thank|thanks|bye|goodbye|see you|take care)", re.I),
     re.compile(r"^what\s+(is|are)\s+(a\s+|an\s+)?(\w+\s+)?(loan|emi|interest|mortgage|collateral|npa|cibil|fico|banking|bank|finance|debt|equity|asset|liability|budget|savings?|investment|mutual fund|stock|bond|inflation|gdp|rbi|sebi|credit card|debit card|insurance|premium|risk|portfolio|diversif|amortiz|securiti|liquidity|solvency|capital|revenue|profit|loss|balance sheet|cash flow|roi|roe|eps|pe ratio|dividend|compound interest|simple interest|fixed deposit|recurring deposit|net worth|ipo|bull market|bear market|recession|depression|fiscal|monetary|tax|gst|income tax|tds)\b", re.I),
     re.compile(r"^(explain|define|describe|tell me about|what do you mean by)\s+", re.I),
-    re.compile(r"^(how|why|when|where)\s+(do|does|did|can|could|should|would|is|are|was|were)\s+.{3,}(?!.*\b(applicants?|clients?|loans?|default|data|dataset|table|rows?|records?|count|average|total|sum|max|min|group|rate|percentage)\b)", re.I),
+    re.compile(r"^how\s+to\s+", re.I),
+    re.compile(r"\b(increase|improve|boost|raise|build|repair|fix)\b.+\b(cibil|credit|score|rating|fico)\b", re.I),
+    re.compile(r"\b(cibil|credit|fico)\b.+\b(increase|improve|boost|raise|build|repair|fix)\b", re.I),
+    re.compile(r"\b(tips?|ways?|steps?|methods?|strategies?)\b.+\b(credit|cibil|score|loan|finance|save|invest)\b", re.I),
+    re.compile(r"^(how|why|when|where)\s+(do|does|did|can|could|should|would|is|are|was|were)\s+.{3,}(?!.*\b(applicants?|clients?|default|data|dataset|table|rows?|records?|count|average|total|sum|max|min|group|rate|percentage)\b)", re.I),
+    re.compile(r"^how\s+\w+\s+(can|could|should|will|would|is|are)\s+(be\s+)?(increased|improved|boosted|raised|reduced|decreased|fixed|built)", re.I),
     re.compile(r"^(can you|could you|please)\s+(explain|tell|help|describe)", re.I),
     re.compile(r"\b(meaning|definition|concept|theory|principle)\b.*\??\s*$", re.I),
 ]
