@@ -224,6 +224,13 @@ _KNOWLEDGE_BASE = [
         ),
     ),
     (
+        re.compile(r"^(thank|thanks|bye|goodbye|see you|take care)", re.I),
+        (
+            "You're welcome! Feel free to come back anytime with more questions about "
+            "credit risk, loans, or the data. Have a great day! 👋"
+        ),
+    ),
+    (
         re.compile(r"what\s+(is|are)\s+credit\s*risk", re.I),
         (
             "**Credit risk** is the probability that a borrower will fail to repay a loan or "
@@ -348,7 +355,7 @@ _NON_DATA_PATTERNS = [
     re.compile(r"^how\s+are\s+you", re.I),
     re.compile(r"^(what|whats)\s+(is\s+)?(the\s+)?(today|time|date|day)", re.I),
     re.compile(r"^(who|what)\s+are\s+you", re.I),
-    re.compile(r"^(thank|thanks|bye|goodbye)", re.I),
+    re.compile(r"^(thank|thanks|bye|goodbye|see you|take care)", re.I),
     re.compile(r"^what\s+(is|are)\s+(a\s+|an\s+)?(\w+\s+)?(loan|emi|interest|mortgage|collateral|npa|cibil|fico|banking|bank|finance|debt|equity|asset|liability|budget|savings?|investment|mutual fund|stock|bond|inflation|gdp|rbi|sebi|credit card|debit card|insurance|premium|risk|portfolio|diversif|amortiz|securiti|liquidity|solvency|capital|revenue|profit|loss|balance sheet|cash flow|roi|roe|eps|pe ratio|dividend|compound interest|simple interest|fixed deposit|recurring deposit|net worth|ipo|bull market|bear market|recession|depression|fiscal|monetary|tax|gst|income tax|tds)\b", re.I),
     re.compile(r"^(explain|define|describe|tell me about|what do you mean by)\s+", re.I),
     re.compile(r"^(how|why|when|where)\s+(do|does|did|can|could|should|would|is|are|was|were)\s+.{3,}(?!.*\b(applicants?|clients?|loans?|default|data|dataset|table|rows?|records?|count|average|total|sum|max|min|group|rate|percentage)\b)", re.I),
@@ -374,13 +381,19 @@ def _ask_llm_general(question):
             {
                 "role": "system",
                 "content": (
-                    "You are a helpful credit risk and finance expert assistant. "
-                    "Answer the user's question in a detailed, well-structured way. "
-                    "Use markdown formatting (bold, bullet points, numbered lists) "
-                    "to make your answer easy to read. Focus on credit risk, banking, "
-                    "finance, and lending topics. If the question is completely unrelated "
-                    "to finance or credit, still answer helpfully but briefly mention "
-                    "that this platform specialises in credit risk analysis."
+                    "You are a helpful financial knowledge assistant integrated into a "
+                    "Credit Risk Intelligence Platform. Your job is to educate users "
+                    "about finance, banking, loans, and credit-related concepts.\n\n"
+                    "Guidelines:\n"
+                    "- Give detailed, well-structured answers using markdown (bold, "
+                    "bullet points, numbered lists, headers).\n"
+                    "- For financial terms: provide a clear definition, how it works, "
+                    "types/variants, real-world examples, and relevance to credit risk.\n"
+                    "- For non-finance questions: answer briefly and helpfully, then "
+                    "mention this platform specializes in credit/finance topics.\n"
+                    "- Never say 'I don't know' — always provide something useful.\n"
+                    "- Keep responses between 100-300 words (detailed but not excessive).\n"
+                    "- Use Indian context where relevant (₹, RBI, CIBIL, Indian banks)."
                 ),
             },
             {"role": "user", "content": question},

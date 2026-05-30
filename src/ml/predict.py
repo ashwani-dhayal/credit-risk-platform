@@ -69,6 +69,16 @@ def predict_one(applicant):
     )
 
 
+def _load_model_and_preprocessor():
+    """Return (model, preprocessor, feature_columns) for external use."""
+    artifact = load_artifact()
+    pipeline = artifact["pipeline"]
+    cols = artifact["feature_columns"]
+    model = pipeline.named_steps.get("classifier") or pipeline.steps[-1][1]
+    preprocessor = pipeline.named_steps.get("preprocessor") or pipeline.steps[0][1]
+    return model, preprocessor, cols
+
+
 def predict_batch(df):
     """Score a DataFrame of applicants. Returns df with proba + band + decision."""
     artifact = load_artifact()

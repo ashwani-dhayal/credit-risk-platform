@@ -65,7 +65,33 @@ st.markdown("""
 .risk-high { color: #d32f2f; font-weight: bold; }
 .risk-medium { color: #f57c00; font-weight: bold; }
 .risk-low { color: #388e3c; font-weight: bold; }
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%);
+    color: #a0a0a0;
+    text-align: center;
+    padding: 8px 0;
+    font-size: 0.75rem;
+    z-index: 999;
+    border-top: 1px solid #333;
+}
+.footer a { color: #667eea; text-decoration: none; }
+div[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #f8f9fa 0%, #e8ecf0 100%);
+}
+div[data-testid="stSidebar"] .stRadio label {
+    font-size: 0.95rem;
+    padding: 4px 0;
+}
 </style>
+<div class="footer">
+    Credit Risk Intelligence Platform &bull; Built by Ashwani Dhayal &bull;
+    <a href="https://github.com/ashwani-dhayal/credit-risk-platform" target="_blank">GitHub</a>
+    &bull; May 2026
+</div>
 """, unsafe_allow_html=True)
 
 
@@ -106,6 +132,7 @@ with st.sidebar:
             "🎯 Risk Prediction",
             "🔍 Explainability",
             "📜 Decision Rules",
+            "📊 Model Performance",
             "💬 Talk-to-Data",
             "📈 Improve Your Score",
         ],
@@ -580,6 +607,55 @@ def render_eda():
         )
         st.plotly_chart(fig, use_container_width=True)
 
+        # Correlation heatmap for top features
+        st.markdown("---")
+        st.markdown("#### 🔥 Feature Correlation Heatmap (Top 10)")
+        top10_features = list(top.head(10).index) + ["TARGET"]
+        corr_matrix = num[top10_features].corr()
+        fig_heat = go.Figure(data=go.Heatmap(
+            z=corr_matrix.values,
+            x=[c.replace("_", " ")[:15] for c in corr_matrix.columns],
+            y=[c.replace("_", " ")[:15] for c in corr_matrix.columns],
+            colorscale="RdBu_r",
+            zmin=-1, zmax=1,
+            text=corr_matrix.round(2).values,
+            texttemplate="%{text}",
+            textfont={"size": 9},
+        ))
+        fig_heat.update_layout(height=500, title="Inter-Feature Correlations")
+        st.plotly_chart(fig_heat, use_container_width=True)
+
+        # Interactive feature explorer
+        st.markdown("---")
+        st.markdown("#### 🔬 Feature Explorer")
+        st.markdown("Select a numeric feature to see its distribution split by default status.")
+        numeric_features = [c for c in num.columns if c != "TARGET" and df[c].nunique() > 5]
+        selected_feat = st.selectbox("Choose a feature:", sorted(numeric_features), index=numeric_features.index("CREDIT_INCOME_RATIO") if "CREDIT_INCOME_RATIO" in numeric_features else 0)
+
+        if selected_feat:
+            explore_df = df[[selected_feat, "TARGET"]].dropna().copy()
+            explore_df["Status"] = explore_df["TARGET"].map({0: "Repaid", 1: "Defaulted"})
+            q99 = explore_df[selected_feat].quantile(0.99)
+            explore_df = explore_df[explore_df[selected_feat] <= q99]
+
+            fig_explore = px.histogram(
+                explore_df, x=selected_feat, color="Status",
+                barmode="overlay", opacity=0.6, nbins=40,
+                color_discrete_map={"Repaid": "#3498db", "Defaulted": "#e74c3c"},
+                title=f"Distribution of {selected_feat} by Default Status",
+            )
+            fig_explore.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02))
+            st.plotly_chart(fig_explore, use_container_width=True)
+
+            # Quick stats for that feature
+            sc1, sc2, sc3, sc4 = st.columns(4)
+            repaid_vals = explore_df[explore_df["TARGET"] == 0][selected_feat]
+            defaulted_vals = explore_df[explore_df["TARGET"] == 1][selected_feat]
+            sc1.metric("Mean (Repaid)", f"{repaid_vals.mean():.3f}")
+            sc2.metric("Mean (Defaulted)", f"{defaulted_vals.mean():.3f}")
+            sc3.metric("Median (Repaid)", f"{repaid_vals.median():.3f}")
+            sc4.metric("Median (Defaulted)", f"{defaulted_vals.median():.3f}")
+
         st.markdown("---")
         st.markdown("#### 💡 Key Insights from EDA")
         with st.container(border=True):
@@ -975,6 +1051,137 @@ def render_rules():
         st.markdown("")
 
 
+# ============================ Model Performance ============================
+def render_model_performance():
+    st.title("📊 Model Performance & Evaluation")
+    st.markdown("---")
+
+    if not SETTINGS.model_path.exists():
+        st.error("Train the model first: `python scripts/train_model.py`")
+        return
+
+    metrics = get_metrics()
+    if not metrics:
+        st.warning("No metrics.json found. Re-run training.")
+        return
+
+    with st.container(border=True):
+        st.markdown("""
+        **Model evaluation dashboard** — Understand how well the LightGBM classifier
+        performs on held-out validation data. All metrics below were computed on a
+        stratified 20% test set that the model never saw during training.
+        """)
+
+    # Key metrics row
+    st.markdown("### 🎯 Key Performance Metrics")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("ROC-AUC", f"{metrics.get('roc_auc', 0):.3f}", help="Area under the ROC curve. 1.0 is perfect, 0.5 is random.")
+    m2.metric("KS Statistic", f"{metrics.get('ks_statistic', 0):.3f}", help="Max separation between cumulative distributions of defaulters vs non-defaulters.")
+    m3.metric("PR-AUC", f"{metrics.get('pr_auc', 0):.3f}", help="Precision-Recall AUC. Robust to class imbalance.")
+    m4.metric("F1 Score", f"{metrics.get('f1', 0):.3f}", help="Harmonic mean of precision and recall at optimal threshold.")
+
+    st.markdown("---")
+
+    # Generate ROC curve from model predictions
+    from src.ml.predict import _load_model_and_preprocessor
+    from sklearn.metrics import roc_curve, precision_recall_curve, confusion_matrix
+
+    try:
+        model, preprocessor, feature_cols = _load_model_and_preprocessor()
+        df = get_data()
+        from sklearn.model_selection import train_test_split
+        _, val_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df["TARGET"])
+
+        X_val = val_df[feature_cols] if all(c in val_df.columns for c in feature_cols) else val_df.drop(columns=["TARGET", "SK_ID_CURR"], errors="ignore")
+        y_val = val_df["TARGET"].values
+        X_proc = preprocessor.transform(X_val)
+        y_prob = model.predict_proba(X_proc)[:, 1]
+
+        tab1, tab2, tab3 = st.tabs(["📈 ROC Curve", "🎯 Precision-Recall", "📊 Threshold Analysis"])
+
+        with tab1:
+            fpr, tpr, thresholds_roc = roc_curve(y_val, y_prob)
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', name=f"Model (AUC={metrics.get('roc_auc', 0):.3f})", line=dict(color='#3498db', width=2.5)))
+            fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name="Random Baseline", line=dict(color='#95a5a6', dash='dash')))
+            fig.update_layout(
+                title="Receiver Operating Characteristic (ROC) Curve",
+                xaxis_title="False Positive Rate",
+                yaxis_title="True Positive Rate",
+                height=450,
+                legend=dict(x=0.55, y=0.1),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("""
+            **Interpretation:** The ROC curve shows the trade-off between catching defaults
+            (True Positive Rate) and false alarms (False Positive Rate). The further the
+            blue line is from the dashed diagonal, the better the model discriminates.
+            """)
+
+        with tab2:
+            precision, recall, thresholds_pr = precision_recall_curve(y_val, y_prob)
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=recall, y=precision, mode='lines', name="Model", line=dict(color='#e74c3c', width=2.5)))
+            fig.add_hline(y=y_val.mean(), line_dash="dash", line_color="#95a5a6", annotation_text=f"Baseline ({y_val.mean():.2%})")
+            fig.update_layout(
+                title="Precision-Recall Curve",
+                xaxis_title="Recall (Sensitivity)",
+                yaxis_title="Precision",
+                height=450,
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("""
+            **Interpretation:** The PR curve is especially informative for imbalanced data.
+            Precision = "Of those I flagged as defaulters, how many actually defaulted?"
+            Recall = "Of all actual defaulters, how many did I catch?"
+            """)
+
+        with tab3:
+            st.markdown("#### How the decision threshold affects outcomes")
+            st.markdown(
+                "Move the slider to see how different probability thresholds change "
+                "the confusion matrix and approval/rejection rates."
+            )
+            threshold = st.slider("Decision Threshold", 0.05, 0.95, 0.20, 0.05)
+            y_pred = (y_prob >= threshold).astype(int)
+            cm = confusion_matrix(y_val, y_pred)
+            tn, fp, fn, tp = cm.ravel()
+
+            cm1, cm2, cm3, cm4 = st.columns(4)
+            cm1.metric("True Negatives (Correct Approvals)", f"{tn:,}")
+            cm2.metric("False Positives (Wrongly Rejected)", f"{fp:,}")
+            cm3.metric("False Negatives (Missed Defaults)", f"{fn:,}")
+            cm4.metric("True Positives (Caught Defaults)", f"{tp:,}")
+
+            approval_rate = (tn + fn) / len(y_val) * 100
+            catch_rate = tp / (tp + fn) * 100 if (tp + fn) > 0 else 0
+            false_alarm = fp / (fp + tn) * 100 if (fp + tn) > 0 else 0
+
+            st.markdown("---")
+            a1, a2, a3 = st.columns(3)
+            a1.metric("Approval Rate", f"{approval_rate:.1f}%", help="% of applicants that would be approved")
+            a2.metric("Default Catch Rate", f"{catch_rate:.1f}%", help="% of actual defaulters identified")
+            a3.metric("False Alarm Rate", f"{false_alarm:.1f}%", help="% of good applicants wrongly flagged")
+
+            # Confusion matrix heatmap
+            fig = go.Figure(data=go.Heatmap(
+                z=[[tn, fp], [fn, tp]],
+                x=["Predicted: Repaid", "Predicted: Default"],
+                y=["Actual: Repaid", "Actual: Default"],
+                colorscale="Blues",
+                text=[[f"TN\n{tn:,}", f"FP\n{fp:,}"], [f"FN\n{fn:,}", f"TP\n{tp:,}"]],
+                texttemplate="%{text}",
+                textfont={"size": 14},
+                showscale=False,
+            ))
+            fig.update_layout(title=f"Confusion Matrix (threshold = {threshold:.2f})", height=350)
+            st.plotly_chart(fig, use_container_width=True)
+
+    except Exception as e:
+        st.warning(f"Could not generate model curves: {e}")
+        st.info("This may happen if the model was trained with a different feature set. Re-train to fix.")
+
+
 # ============================ Chatbot ============================
 def render_chatbot():
     st.title("💬 Talk-to-Data: AI-Powered Q&A")
@@ -984,7 +1191,7 @@ def render_chatbot():
         st.markdown(f"""
         **Ask any question about the loan data in plain English.**
         The AI agent translates your question into SQL, runs it safely against the database,
-        and explains the results.
+        and explains the results. You can also ask general finance/credit questions.
 
         Currently using: **{SETTINGS.active_llm_provider.title()}**
         {"" if SETTINGS.active_llm_provider != "fallback" else " (limited to 9 preset queries — add an API key for unlimited questions)"}
@@ -992,17 +1199,21 @@ def render_chatbot():
 
     from src.llm.nl_to_sql import answer
 
-    # Suggestions in a nicer layout
-    st.markdown("#### 💡 Try These Sample Questions:")
+    # Initialize chat history
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = []
+
+    # Suggestions
+    st.markdown("#### 💡 Try These:")
     suggestions = [
-        ("📊", "How many applicants are there in total?"),
-        ("📈", "What is the overall default rate?"),
-        ("🎓", "Default rate by education level"),
-        ("💼", "Top 5 occupations by default rate"),
-        ("💰", "Average income for defaulters vs non-defaulters"),
-        ("👫", "Default rate by gender"),
+        ("📊", "How many applicants are there?"),
+        ("📈", "Overall default rate"),
+        ("🎓", "Default rate by education"),
+        ("💼", "Top occupations by default"),
+        ("💰", "Income: defaulters vs non-defaulters"),
         ("🏠", "Default rate by housing type"),
-        ("📉", "Credit-to-income ratio for defaulters vs non-defaulters"),
+        ("💳", "What is credit risk?"),
+        ("🏦", "What is a home loan?"),
     ]
     cols = st.columns(4)
     for i, (icon, s) in enumerate(suggestions):
@@ -1016,58 +1227,76 @@ def render_chatbot():
         value=st.session_state.get("chat_input", ""),
         placeholder="e.g. What is the average loan amount by housing type?",
     )
-    go = st.button("Ask →", type="primary", use_container_width=True)
+
+    col_ask, col_clear = st.columns([4, 1])
+    with col_ask:
+        go = st.button("Ask →", type="primary", use_container_width=True)
+    with col_clear:
+        if st.button("🗑️ Clear History", use_container_width=True):
+            st.session_state["chat_history"] = []
+            st.rerun()
 
     if go and question.strip():
-        with st.spinner("🤖 Translating to SQL and querying the database…"):
+        with st.spinner("🤖 Thinking…"):
             res = answer(question.strip())
 
+        st.session_state["chat_history"].append({
+            "question": question.strip(),
+            "answer": res.answer,
+            "sql": res.sql,
+            "provider": res.provider,
+            "rows": res.rows,
+            "error": res.error,
+            "used_fallback": res.used_fallback,
+        })
+        st.session_state["chat_input"] = ""
+        st.rerun()
+
+    # Render chat history (most recent first)
+    if st.session_state["chat_history"]:
         st.markdown("---")
+        st.markdown("### 💬 Conversation")
 
-        if res.error:
-            st.error(f"❌ {res.answer}")
-        else:
-            st.markdown("#### 📝 Answer")
-            with st.container(border=True):
-                st.markdown(res.answer)
+        for i, entry in enumerate(reversed(st.session_state["chat_history"])):
+            idx = len(st.session_state["chat_history"]) - 1 - i
 
-        # SQL and data
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            st.markdown("**Generated SQL:**")
-            st.code(res.sql, language="sql")
-        with col2:
-            st.markdown("**Query metadata:**")
-            st.markdown(f"- Provider: `{res.provider}`")
-            st.markdown(f"- Rows returned: `{len(res.rows)}`")
-            if res.used_fallback:
-                st.markdown("- Mode: `deterministic fallback`")
+            # User message
+            st.markdown(f"**🧑 You:** {entry['question']}")
 
-        if res.rows:
-            st.markdown("**📋 Result Data:**")
-            result_df = pd.DataFrame(res.rows)
-            st.dataframe(result_df, use_container_width=True, hide_index=True)
+            # Assistant response
+            if entry.get("error"):
+                st.error(f"❌ {entry['answer']}")
+            else:
+                with st.container(border=True):
+                    st.markdown(entry["answer"])
 
-            # Auto-visualize if there's a categorical + numeric column pair
-            if len(result_df.columns) >= 2 and len(result_df) > 1:
-                try:
-                    numeric_cols = result_df.select_dtypes(include=["number"]).columns.tolist()
-                    str_cols = result_df.select_dtypes(include=["object"]).columns.tolist()
-                    if numeric_cols and str_cols:
-                        chart_df = result_df[[str_cols[0], numeric_cols[0]]].dropna()
-                        if len(chart_df) > 0:
-                            fig = px.bar(
-                                chart_df,
-                                x=str_cols[0],
-                                y=numeric_cols[0],
-                                title=f"{numeric_cols[0].replace('_', ' ').title()} by {str_cols[0].replace('_', ' ').title()}",
-                                color=str_cols[0],
-                                color_discrete_sequence=px.colors.qualitative.Set2,
-                            )
-                            fig.update_layout(showlegend=False, xaxis_tickangle=-30)
-                            st.plotly_chart(fig, use_container_width=True)
-                except Exception:
-                    pass
+            # Expandable details
+            with st.expander(f"🔧 Details (Provider: {entry['provider']})", expanded=False):
+                st.code(entry["sql"], language="sql")
+                if entry["rows"]:
+                    result_df = pd.DataFrame(entry["rows"])
+                    st.dataframe(result_df, use_container_width=True, hide_index=True)
+                    if len(result_df.columns) >= 2 and len(result_df) > 1:
+                        try:
+                            numeric_cols = result_df.select_dtypes(include=["number"]).columns.tolist()
+                            str_cols = result_df.select_dtypes(include=["object"]).columns.tolist()
+                            if numeric_cols and str_cols:
+                                chart_df = result_df[[str_cols[0], numeric_cols[0]]].dropna()
+                                if len(chart_df) > 0:
+                                    fig = px.bar(
+                                        chart_df,
+                                        x=str_cols[0], y=numeric_cols[0],
+                                        title=f"{numeric_cols[0].replace('_', ' ').title()} by {str_cols[0].replace('_', ' ').title()}",
+                                        color=str_cols[0],
+                                        color_discrete_sequence=px.colors.qualitative.Set2,
+                                    )
+                                    fig.update_layout(showlegend=False, xaxis_tickangle=-30)
+                                    st.plotly_chart(fig, use_container_width=True)
+                        except Exception:
+                            pass
+
+            if i < len(st.session_state["chat_history"]) - 1:
+                st.markdown("---")
 
 
 # ============================ Improve Score ============================
@@ -1330,6 +1559,7 @@ ROUTES = {
     "🎯 Risk Prediction": render_predict,
     "🔍 Explainability": render_explain,
     "📜 Decision Rules": render_rules,
+    "📊 Model Performance": render_model_performance,
     "💬 Talk-to-Data": render_chatbot,
     "📈 Improve Your Score": render_improve_score,
 }
