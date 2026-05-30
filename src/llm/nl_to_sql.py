@@ -292,8 +292,32 @@ def _check_knowledge_base(question):
     return None
 
 
+def _ask_llm_general(question):
+    """Ask the LLM a general question directly (not SQL-related)."""
+    try:
+        client = get_client()
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a helpful credit risk and finance expert assistant. "
+                    "Answer the user's question in a detailed, well-structured way. "
+                    "Use markdown formatting (bold, bullet points, numbered lists) "
+                    "to make your answer easy to read. Focus on credit risk, banking, "
+                    "finance, and lending topics. If the question is completely unrelated "
+                    "to finance or credit, still answer helpfully but briefly mention "
+                    "that this platform specialises in credit risk analysis."
+                ),
+            },
+            {"role": "user", "content": question},
+        ]
+        return client.chat(messages)
+    except Exception:
+        return None
+
+
 def answer(question):
-    # First check if this is a general knowledge question
+    # First check if this is a general knowledge question from our KB
     kb_answer = _check_knowledge_base(question)
     if kb_answer:
         return AgentAnswer(
@@ -324,6 +348,29 @@ def answer(question):
             sql_raw = _fallback_sql(question) or (
                 "SELECT 'llm_failed_and_no_fallback_match' AS note"
             )
+
+    # If the LLM says unanswerable or the fallback didn't match, ask it as a
+    # general knowledge question using the LLM directly
+    if "unanswerable" in sql_raw.lower() or "no_fallback_match" in sql_raw.lower():
+        general_answer = _ask_llm_general(question)
+        if general_answer:
+            return AgentAnswer(
+                question=question,
+                sql="-- General question (no SQL needed)",
+                rows=[],
+                answer=general_answer,
+                provider=provider,
+                used_fallback=False,
+            )
+        return AgentAnswer(
+            question=question,
+            sql=sql_raw,
+            rows=[],
+            answer="I couldn't find a relevant answer for this question in the dataset or my knowledge.",
+            provider=provider,
+            used_fallback=used_fallback,
+            error="unanswerable",
+        )
 
     validation = validate_and_harden(sql_raw)
     if not validation.ok:
