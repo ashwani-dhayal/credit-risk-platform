@@ -1,0 +1,6 @@
+# Drop the Kaggle Home Credit Default Risk CSVs here.
+# Specifically: application_train.csv (and optionally bureau.csv, previous_application.csv, etc.)
+# Download: https://www.kaggle.com/competitions/home-credit-default-risk/data
+#
+# If this folder is empty, the app will use the bundled synthetic sample
+# in data/sample/application_train_sample.csv (10,000 rows) so the demo still works.

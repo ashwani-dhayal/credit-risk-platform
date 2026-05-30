@@ -1,0 +1,181 @@
+[
+  {
+    "rule_id": 1,
+    "conditions": [
+      "CREDIT_INCOME_RATIO <= 5.188",
+      "EXT_SOURCE_MEAN <= 0.292",
+      "NAME_EDUCATION_TYPE != 'Higher education'",
+      "NAME_INCOME_TYPE != 'Pensioner'"
+    ],
+    "support_pct": 11.79,
+    "default_rate_pct": 66.72,
+    "lift": 8.34,
+    "n_samples": 1179,
+    "band": "High",
+    "as_text": "Rule 1: IF CREDIT_INCOME_RATIO <= 5.188 AND EXT_SOURCE_MEAN <= 0.292 AND NAME_EDUCATION_TYPE != 'Higher education' AND NAME_INCOME_TYPE != 'Pensioner' THEN risk = High (support=11.8%, default_rate=66.7%, lift=8.34x, n=1179)"
+  },
+  {
+    "rule_id": 13,
+    "conditions": [
+      "CREDIT_INCOME_RATIO > 5.188",
+      "ANNUITY_INCOME_RATIO > 0.458",
+      "EXT_SOURCE_MEAN <= 0.471",
+      "NAME_EDUCATION_TYPE != 'Higher education'"
+    ],
+    "support_pct": 6.86,
+    "default_rate_pct": 88.31,
+    "lift": 11.04,
+    "n_samples": 686,
+    "band": "High",
+    "as_text": "Rule 13: IF CREDIT_INCOME_RATIO > 5.188 AND ANNUITY_INCOME_RATIO > 0.458 AND EXT_SOURCE_MEAN <= 0.471 AND NAME_EDUCATION_TYPE != 'Higher education' THEN risk = High (support=6.9%, default_rate=88.3%, lift=11.04x, n=686)"
+  },
+  {
+    "rule_id": 8,
+    "conditions": [
+      "CREDIT_INCOME_RATIO <= 5.188",
+      "EXT_SOURCE_MEAN > 0.292",
+      "CREDIT_INCOME_RATIO > 2.702",
+      "AGE_YEARS > 35.85"
+    ],
+    "support_pct": 17.3,
+    "default_rate_pct": 24.71,
+    "lift": 3.09,
+    "n_samples": 1730,
+    "band": "Medium",
+    "as_text": "Rule 8: IF CREDIT_INCOME_RATIO <= 5.188 AND EXT_SOURCE_MEAN > 0.292 AND CREDIT_INCOME_RATIO > 2.702 AND AGE_YEARS > 35.85 THEN risk = Medium (support=17.3%, default_rate=24.7%, lift=3.09x, n=1730)"
+  },
+  {
+    "rule_id": 7,
+    "conditions": [
+      "CREDIT_INCOME_RATIO <= 5.188",
+      "EXT_SOURCE_MEAN > 0.292",
+      "CREDIT_INCOME_RATIO > 2.702",
+      "AGE_YEARS <= 35.85"
+    ],
+    "support_pct": 5.79,
+    "default_rate_pct": 55.18,
+    "lift": 6.9,
+    "n_samples": 579,
+    "band": "High",
+    "as_text": "Rule 7: IF CREDIT_INCOME_RATIO <= 5.188 AND EXT_SOURCE_MEAN > 0.292 AND CREDIT_INCOME_RATIO > 2.702 AND AGE_YEARS <= 35.85 THEN risk = High (support=5.8%, default_rate=55.2%, lift=6.90x, n=579)"
+  },
+  {
+    "rule_id": 9,
+    "conditions": [
+      "CREDIT_INCOME_RATIO > 5.188",
+      "ANNUITY_INCOME_RATIO <= 0.458",
+      "EXT_SOURCE_MEAN <= 0.369",
+      "AGE_YEARS <= 45.01"
+    ],
+    "support_pct": 2.68,
+    "default_rate_pct": 79.95,
+    "lift": 9.99,
+    "n_samples": 268,
+    "band": "High",
+    "as_text": "Rule 9: IF CREDIT_INCOME_RATIO > 5.188 AND ANNUITY_INCOME_RATIO <= 0.458 AND EXT_SOURCE_MEAN <= 0.369 AND AGE_YEARS <= 45.01 THEN risk = High (support=2.7%, default_rate=80.0%, lift=9.99x, n=268)"
+  },
+  {
+    "rule_id": 6,
+    "conditions": [
+      "CREDIT_INCOME_RATIO <= 5.188",
+      "EXT_SOURCE_MEAN > 0.292",
+      "CREDIT_INCOME_RATIO <= 2.702",
+      "REGION_RATING_CLIENT > 2.5"
+    ],
+    "support_pct": 6.31,
+    "default_rate_pct": 29.35,
+    "lift": 3.67,
+    "n_samples": 631,
+    "band": "Medium",
+    "as_text": "Rule 6: IF CREDIT_INCOME_RATIO <= 5.188 AND EXT_SOURCE_MEAN > 0.292 AND CREDIT_INCOME_RATIO <= 2.702 AND REGION_RATING_CLIENT > 2.5 THEN risk = Medium (support=6.3%, default_rate=29.4%, lift=3.67x, n=631)"
+  },
+  {
+    "rule_id": 15,
+    "conditions": [
+      "CREDIT_INCOME_RATIO > 5.188",
+      "ANNUITY_INCOME_RATIO > 0.458",
+      "EXT_SOURCE_MEAN > 0.471"
+    ],
+    "support_pct": 2.47,
+    "default_rate_pct": 61.39,
+    "lift": 7.67,
+    "n_samples": 247,
+    "band": "High",
+    "as_text": "Rule 15: IF CREDIT_INCOME_RATIO > 5.188 AND ANNUITY_INCOME_RATIO > 0.458 AND EXT_SOURCE_MEAN > 0.471 THEN risk = High (support=2.5%, default_rate=61.4%, lift=7.67x, n=247)"
+  },
+  {
+    "rule_id": 14,
+    "conditions": [
+      "CREDIT_INCOME_RATIO > 5.188",
+      "ANNUITY_INCOME_RATIO > 0.458",
+      "EXT_SOURCE_MEAN <= 0.471",
+      "NAME_EDUCATION_TYPE == 'Higher education'"
+    ],
+    "support_pct": 2.0,
+    "default_rate_pct": 71.63,
+    "lift": 8.95,
+    "n_samples": 200,
+    "band": "High",
+    "as_text": "Rule 14: IF CREDIT_INCOME_RATIO > 5.188 AND ANNUITY_INCOME_RATIO > 0.458 AND EXT_SOURCE_MEAN <= 0.471 AND NAME_EDUCATION_TYPE == 'Higher education' THEN risk = High (support=2.0%, default_rate=71.6%, lift=8.95x, n=200)"
+  },
+  {
+    "rule_id": 12,
+    "conditions": [
+      "CREDIT_INCOME_RATIO > 5.188",
+      "ANNUITY_INCOME_RATIO <= 0.458",
+      "EXT_SOURCE_MEAN > 0.369",
+      "CREDIT_INCOME_RATIO > 6.202"
+    ],
+    "support_pct": 2.66,
+    "default_rate_pct": 45.49,
+    "lift": 5.69,
+    "n_samples": 266,
+    "band": "Medium",
+    "as_text": "Rule 12: IF CREDIT_INCOME_RATIO > 5.188 AND ANNUITY_INCOME_RATIO <= 0.458 AND EXT_SOURCE_MEAN > 0.369 AND CREDIT_INCOME_RATIO > 6.202 THEN risk = Medium (support=2.7%, default_rate=45.5%, lift=5.69x, n=266)"
+  },
+  {
+    "rule_id": 5,
+    "conditions": [
+      "CREDIT_INCOME_RATIO <= 5.188",
+      "EXT_SOURCE_MEAN > 0.292",
+      "CREDIT_INCOME_RATIO <= 2.702",
+      "REGION_RATING_CLIENT <= 2.5"
+    ],
+    "support_pct": 31.01,
+    "default_rate_pct": 11.01,
+    "lift": 1.38,
+    "n_samples": 3101,
+    "band": "Low",
+    "as_text": "Rule 5: IF CREDIT_INCOME_RATIO <= 5.188 AND EXT_SOURCE_MEAN > 0.292 AND CREDIT_INCOME_RATIO <= 2.702 AND REGION_RATING_CLIENT <= 2.5 THEN risk = Low (support=31.0%, default_rate=11.0%, lift=1.38x, n=3101)"
+  },
+  {
+    "rule_id": 10,
+    "conditions": [
+      "CREDIT_INCOME_RATIO > 5.188",
+      "ANNUITY_INCOME_RATIO <= 0.458",
+      "EXT_SOURCE_MEAN <= 0.369",
+      "AGE_YEARS > 45.01"
+    ],
+    "support_pct": 2.01,
+    "default_rate_pct": 51.52,
+    "lift": 6.44,
+    "n_samples": 201,
+    "band": "High",
+    "as_text": "Rule 10: IF CREDIT_INCOME_RATIO > 5.188 AND ANNUITY_INCOME_RATIO <= 0.458 AND EXT_SOURCE_MEAN <= 0.369 AND AGE_YEARS > 45.01 THEN risk = High (support=2.0%, default_rate=51.5%, lift=6.44x, n=201)"
+  },
+  {
+    "rule_id": 4,
+    "conditions": [
+      "CREDIT_INCOME_RATIO <= 5.188",
+      "EXT_SOURCE_MEAN <= 0.292",
+      "NAME_EDUCATION_TYPE == 'Higher education'",
+      "CREDIT_INCOME_RATIO > 2.231"
+    ],
+    "support_pct": 2.25,
+    "default_rate_pct": 39.32,
+    "lift": 4.91,
+    "n_samples": 225,
+    "band": "Medium",
+    "as_text": "Rule 4: IF CREDIT_INCOME_RATIO <= 5.188 AND EXT_SOURCE_MEAN <= 0.292 AND NAME_EDUCATION_TYPE == 'Higher education' AND CREDIT_INCOME_RATIO > 2.231 THEN risk = Medium (support=2.2%, default_rate=39.3%, lift=4.91x, n=225)"
+  }
+]

@@ -1,0 +1,31 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: credit-risk-platform:latest
+    container_name: credit-risk-app
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      # Sensible defaults if .env is missing keys; the app gracefully
+      # falls back to the deterministic SQL parser when no LLM key is set.
+      STREAMLIT_SERVER_PORT: "8501"
+      STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+    volumes:
+      # Mount raw data folder so the evaluator can drop the Kaggle CSVs
+      # WITHOUT rebuilding the image. If empty, the container uses the
+      # bundled synthetic sample baked into the image.
+      - ./data/raw:/app/data/raw:ro
+      # Persist trained artifacts across container restarts.
+      - ./models:/app/models
+      - ./data/processed:/app/data/processed
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
