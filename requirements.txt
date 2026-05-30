@@ -31,6 +31,11 @@ tenacity==9.0.0
 # ---- Reporting / docs ----
 reportlab==4.2.5
 python-pptx==1.0.2
+# Pillow ships with reportlab; pinned anyway for image work in build_presentation.
+pillow==10.4.0
 
 # ---- Dev / tests ----
 pytest==8.3.3
+# Playwright is used by scripts/capture_screenshots.py (headless Chromium)
+# to (re)build the UI screenshots in documents/screenshots/.
+playwright==1.47.0

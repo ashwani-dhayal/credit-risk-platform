@@ -1,0 +1,12 @@
+docs: add UI screenshots + backend code slides to the presentation deck
+
+- New `scripts/capture_screenshots.py` uses Playwright (headless Chromium)
+  to capture all 6 UI sections at retina quality.
+- New `documents/screenshots/` (6 PNGs, ~1.7 MB total).
+- `scripts/build_presentation.py` now produces a 20-slide deck mixing:
+    * narrative bullets,
+    * 6 frontend screenshot slides with captions,
+    * 4 backend code-snippet slides pulled live from src/,
+    * metrics table, top-rules slide, run instructions.
+- Both presentation.pptx and presentation.pdf regenerated.
+- Adds `playwright` to requirements.txt for repeatable deck rebuilds.
