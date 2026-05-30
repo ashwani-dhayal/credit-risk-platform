@@ -11,6 +11,7 @@ import json
 import re
 import sqlite3
 from dataclasses import dataclass
+from datetime import date
 from typing import Optional
 
 import pandas as pd
@@ -171,9 +172,57 @@ def _format_table_summary(df):
     return f"Returned {len(df)} row(s). See the table for details."
 
 
+def _today_answer():
+    """Dynamic answer for date/day questions."""
+    today = date.today()
+    return (
+        f"Today is **{today.strftime('%A, %B %d, %Y')}**.\n\n"
+        "This platform specialises in credit risk analysis — feel free to ask "
+        "questions about loans, default rates, credit scores, or anything else!"
+    )
+
+
 # General knowledge answers for common credit-related questions that
 # don't need SQL. First match wins.
+# NOTE: entries can be (pattern, str) OR (pattern, callable). Callables
+# are invoked at runtime to produce dynamic answers.
 _KNOWLEDGE_BASE = [
+    (
+        re.compile(r"\b(today|date today|day today|current date|current day|what day)\b", re.I),
+        _today_answer,
+    ),
+    (
+        re.compile(r"^(hi|hello|hey|howdy|greetings)\b", re.I),
+        (
+            "Hello! I'm the **Credit Risk AI Assistant**. I can help you with:\n\n"
+            "- **Data queries** — ask about default rates, income distributions, loan types, etc.\n"
+            "- **Credit knowledge** — what is credit risk, how scores work, loan types explained\n"
+            "- **Platform guidance** — how the ML model predicts, what SHAP means, etc.\n\n"
+            "Try asking something like *\"What is the default rate by education level?\"* "
+            "or *\"What is a home loan?\"*"
+        ),
+    ),
+    (
+        re.compile(r"^how\s+are\s+you|^how\s+do\s+you\s+do", re.I),
+        (
+            "I'm doing great, thank you for asking! I'm an AI assistant ready to help "
+            "you explore credit risk data and answer finance-related questions.\n\n"
+            "Feel free to ask me anything — from querying the loan dataset to explaining "
+            "concepts like EMI, credit scores, or default rates."
+        ),
+    ),
+    (
+        re.compile(r"^(who|what)\s+are\s+you", re.I),
+        (
+            "I'm the **Talk-to-Data AI Assistant** built into this Credit Risk Platform.\n\n"
+            "**What I can do:**\n"
+            "- Convert your plain-English questions into SQL queries on the loan dataset\n"
+            "- Explain credit/finance concepts in detail\n"
+            "- Provide insights from 10,000+ loan application records\n\n"
+            "Ask me about default rates, income patterns, loan types, credit risk — or "
+            "any general finance concept!"
+        ),
+    ),
     (
         re.compile(r"what\s+(is|are)\s+credit\s*risk", re.I),
         (
@@ -288,7 +337,7 @@ def _check_knowledge_base(question):
     """If the question is general knowledge, return a direct answer."""
     for pat, response in _KNOWLEDGE_BASE:
         if pat.search(question):
-            return response
+            return response() if callable(response) else response
     return None
 
 
@@ -300,7 +349,7 @@ _NON_DATA_PATTERNS = [
     re.compile(r"^(what|whats)\s+(is\s+)?(the\s+)?(today|time|date|day)", re.I),
     re.compile(r"^(who|what)\s+are\s+you", re.I),
     re.compile(r"^(thank|thanks|bye|goodbye)", re.I),
-    re.compile(r"^what\s+(is|are)\s+(a\s+|an\s+)?(loan|emi|interest|mortgage|collateral|npa|cibil|fico|banking|bank|finance|debt|equity|asset|liability|budget|savings?|investment|mutual fund|stock|bond|inflation|gdp|rbi|sebi|credit card|debit card|insurance|premium|risk|portfolio|diversif|amortiz|securiti|liquidity|solvency|capital|revenue|profit|loss|balance sheet|cash flow|roi|roe|eps|pe ratio|dividend|compound interest|simple interest|fixed deposit|recurring deposit|net worth|ipo|bull market|bear market|recession|depression|fiscal|monetary|tax|gst|income tax|tds)\b", re.I),
+    re.compile(r"^what\s+(is|are)\s+(a\s+|an\s+)?(\w+\s+)?(loan|emi|interest|mortgage|collateral|npa|cibil|fico|banking|bank|finance|debt|equity|asset|liability|budget|savings?|investment|mutual fund|stock|bond|inflation|gdp|rbi|sebi|credit card|debit card|insurance|premium|risk|portfolio|diversif|amortiz|securiti|liquidity|solvency|capital|revenue|profit|loss|balance sheet|cash flow|roi|roe|eps|pe ratio|dividend|compound interest|simple interest|fixed deposit|recurring deposit|net worth|ipo|bull market|bear market|recession|depression|fiscal|monetary|tax|gst|income tax|tds)\b", re.I),
     re.compile(r"^(explain|define|describe|tell me about|what do you mean by)\s+", re.I),
     re.compile(r"^(how|why|when|where)\s+(do|does|did|can|could|should|would|is|are|was|were)\s+.{3,}(?!.*\b(applicants?|clients?|loans?|default|data|dataset|table|rows?|records?|count|average|total|sum|max|min|group|rate|percentage)\b)", re.I),
     re.compile(r"^(can you|could you|please)\s+(explain|tell|help|describe)", re.I),
