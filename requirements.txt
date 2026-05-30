@@ -18,9 +18,10 @@ plotly==5.24.1
 streamlit==1.39.0
 
 # ---- LLM clients (all three so any one key works) ----
-openai==1.51.2
-groq==0.11.0
-google-generativeai==0.8.3
+openai>=1.51.2
+groq>=0.15.0
+google-generativeai>=0.8.3
+httpx>=0.27,<0.28
 
 # ---- Utilities ----
 python-dotenv==1.0.1
