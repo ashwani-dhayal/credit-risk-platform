@@ -95,8 +95,7 @@ def get_rules():
 
 # ---- sidebar ----
 with st.sidebar:
-    st.image("https://img.icons8.com/fluency/96/bank-building.png", width=60)
-    st.title("Credit Risk AI")
+    st.markdown("### 🏦 Credit Risk AI")
     st.caption("Intelligent Credit Risk Assessment Platform")
     st.divider()
     section = st.radio(
@@ -905,23 +904,35 @@ def render_rules():
     # Rule cards
     st.markdown("---")
     st.markdown("### Rule Cards")
-    for _, r in df.iterrows():
-        color_map = {"Low": "green", "Medium": "orange", "High": "red"}
-        icon_map = {"Low": "🟢", "Medium": "🟡", "High": "🔴"}
-        color = color_map[r["band"]]
-        icon = icon_map[r["band"]]
-        conditions = " AND ".join(r["conditions"]) if r["conditions"] else "—"
-        with st.container(border=True):
-            col1, col2 = st.columns([3, 1])
-            with col1:
+
+    # Group by risk band for better visual organization
+    for band in ["High", "Medium", "Low"]:
+        band_rules = df[df["band"] == band]
+        if band_rules.empty:
+            continue
+        band_icon = {"High": "🔴", "Medium": "🟡", "Low": "🟢"}[band]
+        band_color = {"High": "#e74c3c", "Medium": "#f39c12", "Low": "#27ae60"}[band]
+        st.markdown(f"#### {band_icon} {band} Risk Rules")
+        for _, r in band_rules.iterrows():
+            conditions = " AND ".join(r["conditions"]) if r["conditions"] else "—"
+            with st.container(border=True):
                 st.markdown(
-                    f"**Rule {r['rule_id']}** — :{color}[{icon} {r['band']} Risk]"
+                    f'<div style="border-left: 5px solid {band_color}; padding-left: 12px;">',
+                    unsafe_allow_html=True,
                 )
-                st.code(f"IF {conditions}\nTHEN → {r['band']} Risk", language="text")
-            with col2:
-                st.metric("Default Rate", f"{r['default_rate_pct']}%")
-                st.metric("Lift", f"{r['lift']}×")
-                st.caption(f"Support: {r['support_pct']}% ({r['n_samples']} applicants)")
+                col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
+                with col1:
+                    st.markdown(f"**Rule {r['rule_id']}**")
+                    st.code(f"IF {conditions}\nTHEN → {r['band']} Risk", language="text")
+                with col2:
+                    st.metric("Default %", f"{r['default_rate_pct']}%")
+                with col3:
+                    st.metric("Lift", f"{r['lift']}×")
+                with col4:
+                    st.metric("Support", f"{r['support_pct']}%")
+                    st.caption(f"n = {r['n_samples']}")
+                st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("")
 
 
 # ============================ Chatbot ============================
@@ -997,18 +1008,26 @@ def render_chatbot():
             result_df = pd.DataFrame(res.rows)
             st.dataframe(result_df, use_container_width=True, hide_index=True)
 
-            # Quick visualization if there's a numeric column
+            # Auto-visualize if there's a categorical + numeric column pair
             if len(result_df.columns) >= 2 and len(result_df) > 1:
-                numeric_cols = result_df.select_dtypes(include=["number"]).columns.tolist()
-                str_cols = result_df.select_dtypes(include=["object"]).columns.tolist()
-                if numeric_cols and str_cols:
-                    fig = px.bar(
-                        result_df, x=str_cols[0], y=numeric_cols[0],
-                        title=f"{numeric_cols[0]} by {str_cols[0]}",
-                        color=numeric_cols[0],
-                        color_continuous_scale="Viridis",
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                try:
+                    numeric_cols = result_df.select_dtypes(include=["number"]).columns.tolist()
+                    str_cols = result_df.select_dtypes(include=["object"]).columns.tolist()
+                    if numeric_cols and str_cols:
+                        chart_df = result_df[[str_cols[0], numeric_cols[0]]].dropna()
+                        if len(chart_df) > 0:
+                            fig = px.bar(
+                                chart_df,
+                                x=str_cols[0],
+                                y=numeric_cols[0],
+                                title=f"{numeric_cols[0].replace('_', ' ').title()} by {str_cols[0].replace('_', ' ').title()}",
+                                color=str_cols[0],
+                                color_discrete_sequence=px.colors.qualitative.Set2,
+                            )
+                            fig.update_layout(showlegend=False, xaxis_tickangle=-30)
+                            st.plotly_chart(fig, use_container_width=True)
+                except Exception:
+                    pass
 
 
 # ---- router ----
