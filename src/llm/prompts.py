@@ -11,6 +11,7 @@ Hard rules:
 - The query MUST be a single SELECT (or WITH ... SELECT).
 - Never use INSERT/UPDATE/DELETE/DROP/ALTER/ATTACH/PRAGMA.
 - Always alias aggregates (e.g. AVG(...) AS avg_income).
+- NEVER use SQL reserved words as column aliases (e.g. do NOT use "group", "order", "select", "from", "where", "having", "limit", "index", "key", "table"). Use descriptive names like "status", "category", "segment" instead.
 - Cap to LIMIT 50 unless the question explicitly asks for more.
 - For UNION queries, put LIMIT only at the very end (after the last SELECT), never before UNION.
 - Prefer GROUP BY with CASE WHEN over UNION for comparing defaulters vs non-defaulters.

@@ -68,14 +68,35 @@ def validate_and_harden(sql):
             False, raw, f"Reference to disallowed table(s): {sorted(unknown)}"
         )
 
+    # Quote any reserved words the LLM used as column aliases.
+    _RESERVED_ALIASES = {
+        "group", "order", "select", "from", "where", "having",
+        "limit", "index", "key", "table", "column", "values",
+        "check", "default", "primary", "unique", "foreign",
+    }
+    hardened = raw
+    for word in _RESERVED_ALIASES:
+        # Match: AS <word> (case-insensitive) that isn't already quoted
+        hardened = re.sub(
+            rf'(?i)\bAS\s+{word}\b(?!\s*["\'])',
+            f"AS [{word}]",
+            hardened,
+        )
+        # Also fix GROUP BY <word> references
+        hardened = re.sub(
+            rf'(?i)\bGROUP\s+BY\s+{word}\b(?!\s*["\'])',
+            f"GROUP BY [{word}]",
+            hardened,
+        )
+
     # If the query has no LIMIT, add one. But skip if there's a UNION
     # (LIMIT goes after the last SELECT in a UNION, but injecting it
     # blindly breaks things — safer to just let it run uncapped for
     # UNION queries since they're typically small).
-    hardened = raw
-    has_union = re.search(r"\bunion\b", lowered)
-    has_limit = re.search(r"\blimit\s+\d+\b", lowered)
+    hardened_lower = hardened.lower()
+    has_union = re.search(r"\bunion\b", hardened_lower)
+    has_limit = re.search(r"\blimit\s+\d+\b", hardened_lower)
     if not has_limit and not has_union:
-        hardened = f"{raw}\nLIMIT {MAX_ROWS}"
+        hardened = f"{hardened}\nLIMIT {MAX_ROWS}"
 
     return SqlValidation(True, hardened)

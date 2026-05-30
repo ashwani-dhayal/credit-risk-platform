@@ -188,7 +188,7 @@ def _today_answer():
 # are invoked at runtime to produce dynamic answers.
 _KNOWLEDGE_BASE = [
     (
-        re.compile(r"\b(today|date today|day today|current date|current day|what day)\b", re.I),
+        re.compile(r"\b(today|date today|day today|current date|current day|what day|what.+date|what.+day)\b", re.I),
         _today_answer,
     ),
     (
@@ -353,7 +353,8 @@ def _check_knowledge_base(question):
 _NON_DATA_PATTERNS = [
     re.compile(r"^(hi|hello|hey|howdy|greetings)\b", re.I),
     re.compile(r"^how\s+are\s+you", re.I),
-    re.compile(r"^(what|whats)\s+(is\s+)?(the\s+)?(today|time|date|day)", re.I),
+    re.compile(r"^(what|whats)\s+(is\s+)?(the\s+)?(today|time|date|day)\b", re.I),
+    re.compile(r"\bwhat\s+(is|are)\s+(the\s+)?(date|day|time)\b", re.I),
     re.compile(r"^(who|what)\s+are\s+you", re.I),
     re.compile(r"^(thank|thanks|bye|goodbye|see you|take care)", re.I),
     re.compile(r"^what\s+(is|are)\s+(a\s+|an\s+)?(\w+\s+)?(loan|emi|interest|mortgage|collateral|npa|cibil|fico|banking|bank|finance|debt|equity|asset|liability|budget|savings?|investment|mutual fund|stock|bond|inflation|gdp|rbi|sebi|credit card|debit card|insurance|premium|risk|portfolio|diversif|amortiz|securiti|liquidity|solvency|capital|revenue|profit|loss|balance sheet|cash flow|roi|roe|eps|pe ratio|dividend|compound interest|simple interest|fixed deposit|recurring deposit|net worth|ipo|bull market|bear market|recession|depression|fiscal|monetary|tax|gst|income tax|tds)\b", re.I),
@@ -488,12 +489,12 @@ def answer(question):
     try:
         with open_connection() as conn:
             df = pd.read_sql_query(validation.sql, conn)
-    except sqlite3.Error as e:
+    except (sqlite3.Error, Exception) as e:
         return AgentAnswer(
             question=question,
             sql=validation.sql,
             rows=[],
-            answer=f"SQL execution failed: {e}",
+            answer=f"The query failed to execute. This sometimes happens when the AI uses reserved SQL keywords as aliases. Please try rephrasing your question.",
             provider=provider,
             used_fallback=used_fallback,
             error=str(e),
