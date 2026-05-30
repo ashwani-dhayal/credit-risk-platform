@@ -121,10 +121,12 @@ _FALLBACK_INTENTS = [
     (
         re.compile(r"(credit.*income|loan.*income).*ratio", re.I),
         (
-            "SELECT TARGET, "
-            "ROUND(AVG(AMT_CREDIT * 1.0 / AMT_INCOME_TOTAL), 2) AS avg_ratio, "
-            "COUNT(*) AS n FROM applications WHERE AMT_INCOME_TOTAL > 0 "
-            "GROUP BY TARGET"
+            "SELECT "
+            "CASE TARGET WHEN 1 THEN 'Defaulted' ELSE 'Repaid' END AS status, "
+            "ROUND(AVG(AMT_CREDIT * 1.0 / AMT_INCOME_TOTAL), 2) AS avg_credit_income_ratio, "
+            "COUNT(*) AS n "
+            "FROM applications WHERE AMT_INCOME_TOTAL > 0 "
+            "GROUP BY TARGET ORDER BY TARGET DESC"
         ),
     ),
     (

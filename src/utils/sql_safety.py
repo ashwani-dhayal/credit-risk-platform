@@ -68,10 +68,14 @@ def validate_and_harden(sql):
             False, raw, f"Reference to disallowed table(s): {sorted(unknown)}"
         )
 
-    # If the query has no LIMIT, add one so a runaway aggregate can't
-    # return 300k rows to the UI.
+    # If the query has no LIMIT, add one. But skip if there's a UNION
+    # (LIMIT goes after the last SELECT in a UNION, but injecting it
+    # blindly breaks things — safer to just let it run uncapped for
+    # UNION queries since they're typically small).
     hardened = raw
-    if not re.search(r"\blimit\s+\d+\b", lowered):
+    has_union = re.search(r"\bunion\b", lowered)
+    has_limit = re.search(r"\blimit\s+\d+\b", lowered)
+    if not has_limit and not has_union:
         hardened = f"{raw}\nLIMIT {MAX_ROWS}"
 
     return SqlValidation(True, hardened)

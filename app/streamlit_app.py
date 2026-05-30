@@ -905,7 +905,40 @@ def render_rules():
     st.markdown("---")
     st.markdown("### Rule Cards")
 
-    # Group by risk band for better visual organization
+    def explain_rule(conditions, band, default_rate, lift, support, n):
+        """Turn conditions into a human-readable explanation."""
+        if not conditions:
+            return "This is a catch-all rule for applicants not matched elsewhere."
+        parts = []
+        for c in conditions:
+            # Make conditions more readable
+            c_clean = c.replace("_", " ").replace("  ", " ")
+            parts.append(f"- {c}")
+        cond_text = "\n".join(parts)
+
+        if band == "High":
+            verdict = (
+                f"Applicants matching these conditions default at **{default_rate}%** — "
+                f"that's **{lift}× higher** than the overall 8% base rate. "
+                f"This group represents {support}% of all applicants ({n:,} people). "
+                "These are high-risk profiles that warrant rejection or deeper review."
+            )
+        elif band == "Medium":
+            verdict = (
+                f"This segment defaults at **{default_rate}%** — "
+                f"**{lift}× the baseline**. Covers {support}% of applicants ({n:,} people). "
+                "These cases need manual review before a final decision."
+            )
+        else:
+            verdict = (
+                f"Only **{default_rate}%** default in this group — "
+                f"**{lift}× the baseline** (lower is better here). "
+                f"Covers {support}% of applicants ({n:,} people). "
+                "These are strong profiles suitable for fast-track approval."
+            )
+        return cond_text, verdict
+
+    # Group by risk band
     for band in ["High", "Medium", "Low"]:
         band_rules = df[df["band"] == band]
         if band_rules.empty:
@@ -914,23 +947,29 @@ def render_rules():
         band_color = {"High": "#e74c3c", "Medium": "#f39c12", "Low": "#27ae60"}[band]
         st.markdown(f"#### {band_icon} {band} Risk Rules")
         for _, r in band_rules.iterrows():
-            conditions = " AND ".join(r["conditions"]) if r["conditions"] else "—"
+            conditions = r["conditions"] if r["conditions"] else []
             with st.container(border=True):
                 st.markdown(
                     f'<div style="border-left: 5px solid {band_color}; padding-left: 12px;">',
                     unsafe_allow_html=True,
                 )
-                col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
+                col1, col2 = st.columns([3, 1])
                 with col1:
-                    st.markdown(f"**Rule {r['rule_id']}**")
-                    st.code(f"IF {conditions}\nTHEN → {r['band']} Risk", language="text")
+                    st.markdown(f"**Rule {r['rule_id']}** — {band_icon} **{r['band']} Risk**")
+                    cond_text, verdict = explain_rule(
+                        conditions, r["band"], r["default_rate_pct"],
+                        r["lift"], r["support_pct"], r["n_samples"]
+                    )
+                    st.markdown("**Conditions:**")
+                    for c in conditions:
+                        st.markdown(f"  `{c}`")
+                    st.markdown("")
+                    st.markdown(verdict)
                 with col2:
-                    st.metric("Default %", f"{r['default_rate_pct']}%")
-                with col3:
-                    st.metric("Lift", f"{r['lift']}×")
-                with col4:
-                    st.metric("Support", f"{r['support_pct']}%")
-                    st.caption(f"n = {r['n_samples']}")
+                    st.metric("Default Rate", f"{r['default_rate_pct']}%")
+                    st.metric("Lift vs Base", f"{r['lift']}×")
+                    st.metric("Population", f"{r['support_pct']}%")
+                    st.caption(f"{r['n_samples']:,} applicants")
                 st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("")
 

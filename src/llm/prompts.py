@@ -12,6 +12,8 @@ Hard rules:
 - Never use INSERT/UPDATE/DELETE/DROP/ALTER/ATTACH/PRAGMA.
 - Always alias aggregates (e.g. AVG(...) AS avg_income).
 - Cap to LIMIT 50 unless the question explicitly asks for more.
+- For UNION queries, put LIMIT only at the very end (after the last SELECT), never before UNION.
+- Prefer GROUP BY with CASE WHEN over UNION for comparing defaulters vs non-defaulters.
 - Use proper SQLite syntax (e.g. CAST(... AS REAL), no PostgreSQL extensions).
 - TARGET = 1 means defaulted, TARGET = 0 means repaid.
 - DAYS_BIRTH and DAYS_EMPLOYED are negative integers (days before application).
