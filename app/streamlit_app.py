@@ -333,8 +333,8 @@ def render_eda():
     q1.metric("Rows", f"{len(df):,}")
     q2.metric("Defaults", f"{df['TARGET'].sum():,.0f}")
     q3.metric("Default %", f"{df['TARGET'].mean()*100:.1f}%")
-    q4.metric("Avg Income", f"${df['AMT_INCOME_TOTAL'].mean():,.0f}")
-    q5.metric("Avg Loan", f"${df['AMT_CREDIT'].mean():,.0f}")
+    q4.metric("Avg Income", f"₹{df['AMT_INCOME_TOTAL'].mean():,.0f}")
+    q5.metric("Avg Loan", f"₹{df['AMT_CREDIT'].mean():,.0f}")
     q6.metric("Avg Age", f"{df['AGE_YEARS'].mean():.0f} yrs")
     st.markdown("---")
 
@@ -501,7 +501,7 @@ def render_eda():
                 barmode="overlay", opacity=0.65,
                 title="Income Distribution (≤99th percentile)",
                 color_discrete_map={"Repaid": "#3498db", "Defaulted": "#e74c3c"},
-                labels={"AMT_INCOME_TOTAL": "Annual Income ($)"},
+                labels={"AMT_INCOME_TOTAL": "Annual Income (₹)"},
             )
             fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02))
             st.plotly_chart(fig, use_container_width=True)
@@ -656,14 +656,14 @@ def render_predict():
         st.markdown("##### 💰 Financial Details")
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            income = st.number_input("Annual income ($)", 25_000, 5_000_000, 180_000, step=5_000)
+            income = st.number_input("Annual income (₹)", 25_000, 5_000_000, 180_000, step=5_000)
             income_type = st.selectbox("Income type", options("NAME_INCOME_TYPE"))
         with c2:
-            credit = st.number_input("Loan amount ($)", 45_000, 4_000_000, 600_000, step=10_000)
+            credit = st.number_input("Loan amount (₹)", 45_000, 4_000_000, 600_000, step=10_000)
             contract = st.selectbox("Contract type", options("NAME_CONTRACT_TYPE"), index=0)
         with c3:
-            annuity = st.number_input("Annuity (yearly $)", 5_000, 400_000, 30_000, step=1_000)
-            goods = st.number_input("Goods price ($)", 45_000, 4_000_000, 540_000, step=10_000)
+            annuity = st.number_input("Annuity (yearly ₹)", 5_000, 400_000, 30_000, step=1_000)
+            goods = st.number_input("Goods price (₹)", 45_000, 4_000_000, 540_000, step=10_000)
         with c4:
             emp_years = st.number_input("Years employed", 0.0, 45.0, 5.0, step=0.5)
             region = st.selectbox("Region rating (1=best)", [1, 2, 3], index=1)
