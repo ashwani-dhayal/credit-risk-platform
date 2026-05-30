@@ -171,7 +171,140 @@ def _format_table_summary(df):
     return f"Returned {len(df)} row(s). See the table for details."
 
 
+# General knowledge answers for common credit-related questions that
+# don't need SQL. First match wins.
+_KNOWLEDGE_BASE = [
+    (
+        re.compile(r"what\s+(is|are)\s+credit\s*risk", re.I),
+        (
+            "**Credit risk** is the probability that a borrower will fail to repay a loan or "
+            "meet their financial obligations, resulting in a loss for the lender.\n\n"
+            "**Key aspects of credit risk:**\n"
+            "- **Default risk** — the borrower stops paying entirely\n"
+            "- **Concentration risk** — too many loans in one segment\n"
+            "- **Downgrade risk** — the borrower's creditworthiness deteriorates over time\n\n"
+            "**How banks manage it:**\n"
+            "1. Credit scoring models (like the one in this platform) predict default probability\n"
+            "2. Risk-based pricing — riskier borrowers pay higher interest rates\n"
+            "3. Collateral requirements for high-risk applicants\n"
+            "4. Portfolio diversification across industries, geographies, and loan sizes\n\n"
+            "In this platform, we quantify credit risk as the **probability of default** — "
+            "a number between 0% and 100% predicted by our LightGBM model based on the "
+            "applicant's demographics, financials, and external credit bureau scores."
+        ),
+    ),
+    (
+        re.compile(r"what\s+(is|are)\s+(a\s+)?credit\s*score", re.I),
+        (
+            "A **credit score** is a numerical representation (typically 300-900 in India, "
+            "300-850 in the US) of how likely you are to repay debt on time.\n\n"
+            "**What goes into it:**\n"
+            "- **Payment history (35%)** — do you pay EMIs/bills on time?\n"
+            "- **Credit utilization (30%)** — how much of your available credit are you using?\n"
+            "- **Credit age (15%)** — how long have you had credit accounts?\n"
+            "- **Credit mix (10%)** — variety of loan types (home, car, card)\n"
+            "- **New inquiries (10%)** — how often you've applied for new credit recently\n\n"
+            "**Score ranges (CIBIL India):** 750+ is excellent, 650-749 is good, "
+            "550-649 is fair, below 550 needs improvement.\n\n"
+            "In our model, the `EXT_SOURCE_1/2/3` columns represent normalized external "
+            "credit bureau scores — they're the single strongest predictors of default."
+        ),
+    ),
+    (
+        re.compile(r"what\s+(is|does)\s+(this|the)\s+(platform|app|tool|system)", re.I),
+        (
+            "This is an **AI-Powered Credit Risk Intelligence Platform** that helps "
+            "lenders make better loan decisions. Here's what it does:\n\n"
+            "1. **EDA** — Visualizes patterns in historical loan data (default rates by "
+            "demographics, income levels, education, etc.)\n"
+            "2. **Risk Prediction** — Scores new applicants using a LightGBM ML model "
+            "(outputs probability of default + Approve/Review/Reject)\n"
+            "3. **Explainability** — Shows SHAP values explaining exactly WHY each "
+            "prediction was made\n"
+            "4. **Decision Rules** — Converts complex ML patterns into human-readable "
+            "IF-THEN business rules\n"
+            "5. **Talk-to-Data** — This chatbot! Ask plain-English questions about the "
+            "loan portfolio and get SQL-backed answers\n"
+            "6. **Score Improvement** — Tips on how applicants can improve their credit profile\n\n"
+            "Built with: LightGBM, SHAP, Streamlit, SQLite, and LLM-powered NL-to-SQL."
+        ),
+    ),
+    (
+        re.compile(r"what\s+(is|are)\s+(a\s+)?default\s*(rate)?", re.I),
+        (
+            "**Default** means a borrower has failed to repay their loan as agreed. The "
+            "**default rate** is the percentage of borrowers who defaulted out of all borrowers.\n\n"
+            "In our dataset:\n"
+            "- TARGET = 1 means the applicant **defaulted**\n"
+            "- TARGET = 0 means they **repaid on time**\n"
+            "- The overall default rate is approximately **8%** (meaning 92% of people repay successfully)\n\n"
+            "An 8% default rate is typical for consumer lending — it means for every 100 loans "
+            "issued, about 8 will eventually go bad. The bank needs to price its interest rates "
+            "to cover these expected losses while still making a profit."
+        ),
+    ),
+    (
+        re.compile(r"how\s+does\s+(the\s+)?model\s+work|how\s+(do|does)\s+(you|it)\s+predict", re.I),
+        (
+            "**How the prediction model works:**\n\n"
+            "1. **Data input** — The applicant's details (income, loan amount, age, education, "
+            "employment, credit scores, etc.) are collected\n\n"
+            "2. **Feature engineering** — Raw data is transformed into meaningful ratios:\n"
+            "   - Credit/Income ratio (loan amount ÷ annual income)\n"
+            "   - Annuity/Income ratio (yearly payment ÷ income)\n"
+            "   - Employment tenure in years\n"
+            "   - Mean external credit score\n\n"
+            "3. **LightGBM model** — A gradient-boosted decision tree ensemble trained on "
+            "10,000+ historical applications learns which patterns lead to default\n\n"
+            "4. **Output** — A probability between 0-100%, then mapped to:\n"
+            "   - **< 20%** → Low risk → Approve\n"
+            "   - **20-50%** → Medium risk → Manual Review\n"
+            "   - **> 50%** → High risk → Reject\n\n"
+            "5. **Explanation** — SHAP values show which features pushed the score up/down\n\n"
+            "The model achieves **ROC-AUC of 0.895** and **KS statistic of 0.657** on validation data."
+        ),
+    ),
+    (
+        re.compile(r"what\s+(is|are)\s+shap|explain.*shap|what.*explainab", re.I),
+        (
+            "**SHAP (SHapley Additive exPlanations)** is a method from game theory that "
+            "explains individual predictions by assigning each feature a contribution score.\n\n"
+            "**How it works in this platform:**\n"
+            "- For each prediction, SHAP calculates how much each feature pushed the risk "
+            "score up or down from the average\n"
+            "- Positive SHAP value = feature **increases** default risk\n"
+            "- Negative SHAP value = feature **decreases** default risk\n\n"
+            "**Example:** If an applicant has a high credit-to-income ratio, SHAP might "
+            "assign it +0.15 (increases risk). If they have a high external credit score, "
+            "SHAP assigns it -0.30 (decreases risk).\n\n"
+            "**Why it matters:** Regulators and compliance teams require that banks can "
+            "explain WHY a loan was rejected. SHAP provides that legally-defensible explanation."
+        ),
+    ),
+]
+
+
+def _check_knowledge_base(question):
+    """If the question is general knowledge, return a direct answer."""
+    for pat, response in _KNOWLEDGE_BASE:
+        if pat.search(question):
+            return response
+    return None
+
+
 def answer(question):
+    # First check if this is a general knowledge question
+    kb_answer = _check_knowledge_base(question)
+    if kb_answer:
+        return AgentAnswer(
+            question=question,
+            sql="-- No SQL needed (general knowledge question)",
+            rows=[],
+            answer=kb_answer,
+            provider="knowledge_base",
+            used_fallback=False,
+        )
+
     schema = get_table_schema()
     provider = active_provider()
     used_fallback = provider == "fallback"
@@ -186,7 +319,6 @@ def answer(question):
             llm_text = client.chat(build_messages(schema, question))
             sql_raw = _extract_json_sql(llm_text)
         except (LLMUnavailable, Exception):
-            # LLM died -- use the deterministic parser instead of giving up.
             used_fallback = True
             provider = "fallback"
             sql_raw = _fallback_sql(question) or (
