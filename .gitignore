@@ -67,3 +67,6 @@ htmlcov/
 # OS / misc
 *.bak
 *.tmp
+
+# Working scratch (commit messages prepared from chat tooling)
+.commit-msg.txt
